@@ -30,6 +30,7 @@
         <property name="justify">center</property>
         <property name="wrap">1</property>
         <property name="margin-top">10</property>
+        <property name="label"> </property>
         <attributes>
           <attribute name="foreground" value="#cccc00000000"/>
         </attributes>

@@ -88,14 +88,14 @@ async fn try_connect(
     let username: String = username_entry.text().into();
     let server: String = server_entry.text().into();
     if username.is_empty() || server.is_empty() {
-        connect_failure_status.set_text("Set both username and server");
+        connect_failure_status.set_label("Set both username and server");
         ui.borrow_mut().set_state(UiState::ChooseServer {
             user_id,
             saved_volumes,
         });
         return;
     } else {
-        connect_failure_status.set_text("");
+        connect_failure_status.set_label(" ");
     }
 
     connect_button.set_sensitive(false);
@@ -266,7 +266,7 @@ async fn try_connect(
                     }
                 }
             };
-            connect_failure_status.set_text(&error_message);
+            connect_failure_status.set_label(&error_message);
             ui.borrow_mut().set_state(UiState::ChooseServer {
                 user_id,
                 saved_volumes,
@@ -551,8 +551,7 @@ async fn handle_network_events(
                 let builder = &ui.borrow().builder;
                 let connect_failure_status: gtk::Label =
                     builder.object("connect_failure_status").unwrap();
-                connect_failure_status
-                    .set_text("Disconnecting from the server because the socket closed");
+                connect_failure_status.set_text("Disconnected: the socket closed");
             }
             NetworkEvent::TimedOut => {
                 let (users, user_list, user_id, saved_volumes) =
@@ -594,8 +593,7 @@ async fn handle_network_events(
                 let builder = &ui.borrow().builder;
                 let connect_failure_status: gtk::Label =
                     builder.object("connect_failure_status").unwrap();
-                connect_failure_status
-                    .set_text("Disconnecting from the server because connection timed out");
+                connect_failure_status.set_text("Disconnected: connection timed out");
             }
             NetworkEvent::NetworkError => {
                 let (users, user_list, user_id, saved_volumes) =
@@ -637,8 +635,7 @@ async fn handle_network_events(
                 let builder = &ui.borrow().builder;
                 let connect_failure_status: gtk::Label =
                     builder.object("connect_failure_status").unwrap();
-                connect_failure_status
-                    .set_text("Disconnecting from the server because of a network issue");
+                connect_failure_status.set_text("Disconnected: encountered network issue");
             }
             NetworkEvent::P2pEstablished {
                 round_trip_latency,
@@ -795,7 +792,7 @@ async fn handle_network_events(
                             let connect_failure_status: gtk::Label =
                                 builder.object("connect_failure_status").unwrap();
                             connect_failure_status.set_text(&format!(
-                                "Disconnecting from the server because an error occurred: {:?}",
+                                "Disconnected: an error occurred: {:?}",
                                 packet.body
                             ));
                         }
@@ -809,8 +806,7 @@ async fn handle_network_events(
                     let builder = &ui.borrow().builder;
                     let connect_failure_status: gtk::Label =
                         builder.object("connect_failure_status").unwrap();
-                    connect_failure_status
-                        .set_text("Disconnecting from the server because of a network issue");
+                    connect_failure_status.set_text("Disconnected: encountered network issue");
                 }
             }
         }
