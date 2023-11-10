@@ -183,7 +183,7 @@ async fn finish_connect(
     Ok(())
 }
 
-async fn receive_disonnect_packet(context: Context, packet: Packet<Disconnect>) -> FutureResult {
+async fn receive_disconnect_packet(context: Context, packet: Packet<Disconnect>) -> FutureResult {
     close_connection(
         context,
         match packet.body.reason {
@@ -282,7 +282,7 @@ fn tcp_packet_to_endpoint(
         )),
         Disconnect::KIND_ID => spawner
             .borrow()
-            .spawn(receive_disonnect_packet(context, packet.finish_parse()?)),
+            .spawn(receive_disconnect_packet(context, packet.finish_parse()?)),
         KeepAlive::KIND_ID => spawner
             .borrow()
             .spawn(receive_keep_alive(context, packet.finish_parse()?)),
