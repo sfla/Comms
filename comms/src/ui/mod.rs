@@ -1,6 +1,8 @@
+use async_std::task::sleep;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -10,8 +12,8 @@ use futures::stream::StreamExt;
 use futures_timer::Delay;
 use gio::prelude::*;
 use gio::ApplicationFlags;
-use glib::timeout_add_local;
 use glib::ControlFlow::{Break, Continue};
+use glib::{timeout_add_local, SignalHandlerId};
 use gtk::gdk::Display;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
@@ -24,7 +26,7 @@ use uuid::Uuid;
 use comms_lib::network::CommsNetworkError;
 use comms_lib::packet;
 use comms_lib::packet::{
-    ClientId, ErrorResponse, Packet, PacketBody, UserId, UserJoined, UserLeft,
+    ClientId, ErrorResponse, NetworkUser, Packet, PacketBody, UserId, UserJoined, UserLeft,
 };
 
 use crate::audio::ipc::{AudioCommand, AudioHandle, EventLoopCreationError};
@@ -55,6 +57,117 @@ pub fn comms_version() -> Cow<'static, str> {
 }
 
 const BUILD_TIMESTAMP: Option<&str> = option_env!("CI_JOB_STARTED_AT");
+
+fn finish_connect(
+    audio_handle: AudioHandle,
+    network_handle: NetworkHandle,
+    network_event_sender: Sender<NetworkEvent>,
+    ui: Rc<RefCell<UiModel>>,
+    client_id: ClientId,
+    existing_users: Vec<NetworkUser>,
+    round_trip_latency: Duration,
+    username: String,
+    server: String,
+    user_id: UserId,
+    saved_volumes: HashMap<UserId, u16>,
+) {
+    let glib_context = glib::MainContext::default();
+
+    glib_context.spawn_local(keep_alive(
+        network_handle.clone(),
+        network_event_sender.clone(),
+    ));
+
+    audio_handle.send(AudioCommand::ServerConnect).unwrap();
+
+    for user in existing_users.iter() {
+        audio_handle
+            .send(AudioCommand::NewClient(user.client_id))
+            .unwrap();
+
+        glib_context.spawn_local(attempt_p2p(
+            network_handle.clone(),
+            network_event_sender.clone(),
+            client_id,
+            P2pDestination {
+                client_id: user.client_id,
+                local_udp_addr: user.local_udp_addr,
+                public_udp_addr: user.public_udp_addr,
+            },
+            true,
+        ));
+    }
+
+    let user_list: gtk::ListBox = {
+        let ui = ui.borrow_mut();
+        ui.builder.object("user_list").unwrap()
+    };
+
+    let (row_widget, latency_widget) = UiUser::create_widgets(&username, round_trip_latency);
+    user_list.append(&row_widget);
+
+    let user = Rc::new(RefCell::new(UiUser {
+        client_id,
+        user_id,
+        volume: *saved_volumes.get(&user_id).unwrap_or(&100u16),
+        is_current_user: true,
+        network_latency: round_trip_latency,
+        is_peer_to_peer: false,
+        root_widget: row_widget,
+        latency_widget,
+        is_speaking: false,
+        speaking_duration: Duration::ZERO,
+    }));
+    UiUser::attach_signal_handlers(user.clone(), audio_handle.clone(), ui.clone());
+    let mut users = HashMap::from([(client_id, user)]);
+
+    for user in existing_users.into_iter() {
+        let one_way_latency = user.round_trip_latency.saturating_add(round_trip_latency) / 2;
+
+        let volume = if let Some(volume) = saved_volumes.get(&user.user_id) {
+            audio_handle
+                .send(AudioCommand::ChangeClientVolume(user.client_id, *volume))
+                .unwrap();
+            *volume
+        } else {
+            100u16
+        };
+
+        let (row_widget, latency_widget) = UiUser::create_widgets(&user.name, round_trip_latency);
+        user_list.append(&row_widget);
+
+        let user_rc = Rc::new(RefCell::new(UiUser {
+            client_id: user.client_id,
+            user_id: user.user_id,
+            volume,
+            is_current_user: false,
+            network_latency: one_way_latency,
+            is_peer_to_peer: false,
+            root_widget: row_widget,
+            latency_widget,
+            is_speaking: false,
+            speaking_duration: Duration::ZERO,
+        }));
+        UiUser::attach_signal_handlers(user_rc.clone(), audio_handle.clone(), ui.clone());
+        users.insert(user.client_id, user_rc);
+    }
+
+    let mut ui = ui.borrow_mut();
+    ui.pane_stack
+        .set_transition_type(gtk::StackTransitionType::SlideUp);
+    ui.pane_stack.set_visible_child_name("user_list");
+    ui.disconnect_button_revealer.set_reveal_child(true);
+    ui.set_state(UiState::Main {
+        users,
+        client_id,
+        round_trip_latency,
+        user_id,
+        saved_volumes,
+        user_list,
+        username,
+        server,
+    });
+}
 
 async fn try_connect(
     audio_handle: AudioHandle,
@@ -133,7 +246,7 @@ async fn try_connect(
     }
 
     let connect_result =
-        network::future::connect(&network_handle, server, username.clone(), user_id).await;
+        network::future::connect(&network_handle, server.clone(), username.clone(), user_id).await;
 
     finished.replace(true);
     connect_progress.set_opacity(0f64);
@@ -141,103 +254,19 @@ async fn try_connect(
 
     match connect_result {
         Ok((client_id, existing_users, round_trip_latency)) => {
-            let glib_context = glib::MainContext::default();
-
-            glib_context.spawn_local(keep_alive(
-                network_handle.clone(),
-                network_event_sender.clone(),
-            ));
-
-            audio_handle.send(AudioCommand::ServerConnect).unwrap();
-
-            for user in existing_users.iter() {
-                audio_handle
-                    .send(AudioCommand::NewClient(user.client_id))
-                    .unwrap();
-
-                glib_context.spawn_local(attempt_p2p(
-                    network_handle.clone(),
-                    network_event_sender.clone(),
-                    client_id,
-                    P2pDestination {
-                        client_id: user.client_id,
-                        local_udp_addr: user.local_udp_addr,
-                        public_udp_addr: user.public_udp_addr,
-                    },
-                    true,
-                ));
-            }
-
-            let user_list: gtk::ListBox = {
-                let ui = ui.borrow_mut();
-                ui.builder.object("user_list").unwrap()
-            };
-
-            let (row_widget, latency_widget) =
-                UiUser::create_widgets(&username, round_trip_latency);
-            user_list.append(&row_widget);
-
-            let user = Rc::new(RefCell::new(UiUser {
+            finish_connect(
+                audio_handle,
+                network_handle,
+                network_event_sender,
+                ui,
                 client_id,
-                user_id,
-                volume: *saved_volumes.get(&user_id).unwrap_or(&100u16),
-                is_current_user: true,
-                network_latency: round_trip_latency,
-                is_peer_to_peer: false,
-                root_widget: row_widget,
-                latency_widget,
-                is_speaking: false,
-                speaking_duration: Duration::ZERO,
-            }));
-            UiUser::attach_signal_handlers(user.clone(), audio_handle.clone(), ui.clone());
-            let mut users = HashMap::from([(client_id, user)]);
-
-            for user in existing_users.into_iter() {
-                let one_way_latency =
-                    user.round_trip_latency.saturating_add(round_trip_latency) / 2;
-
-                let volume = if let Some(volume) = saved_volumes.get(&user.user_id) {
-                    audio_handle
-                        .send(AudioCommand::ChangeClientVolume(user.client_id, *volume))
-                        .unwrap();
-                    *volume
-                } else {
-                    100u16
-                };
-
-                let (row_widget, latency_widget) =
-                    UiUser::create_widgets(&user.name, round_trip_latency);
-                user_list.append(&row_widget);
-
-                let user_rc = Rc::new(RefCell::new(UiUser {
-                    client_id: user.client_id,
-                    user_id: user.user_id,
-                    volume,
-                    is_current_user: false,
-                    network_latency: one_way_latency,
-                    is_peer_to_peer: false,
-                    root_widget: row_widget,
-                    latency_widget,
-                    is_speaking: false,
-                    speaking_duration: Duration::ZERO,
-                }));
-                UiUser::attach_signal_handlers(user_rc.clone(), audio_handle.clone(), ui.clone());
-                users.insert(user.client_id, user_rc);
-            }
-
-            let mut ui = ui.borrow_mut();
-            ui.pane_stack
-                .set_transition_type(gtk::StackTransitionType::SlideUp);
-            ui.pane_stack.set_visible_child_name("user_list");
-            ui.disconnect_button_revealer.set_reveal_child(true);
-            ui.set_state(UiState::Main {
-                users,
-                client_id,
+                existing_users,
                 round_trip_latency,
+                username,
+                server,
                 user_id,
                 saved_volumes,
-                user_list,
-            });
+            );
         }
         Err(e) => {
             let error_message = match e {
@@ -271,6 +300,162 @@ async fn try_connect(
                 user_id,
                 saved_volumes,
             });
+        }
+    }
+}
+
+fn finish_cancel_reconnect(
+    ui: &mut UiModel,
+    connect_progress: &gtk::ProgressBar,
+    connect_button: &gtk::Button,
+    connect_button_label: &gtk::Label,
+    click_handler_id: &Cell<Option<SignalHandlerId>>,
+    user_id: UserId,
+    saved_volumes: HashMap<UserId, u16>,
+) {
+    connect_progress.set_opacity(0f64);
+    connect_button_label.set_label("Connect");
+    if let Some(handler_id) = click_handler_id.replace(None) {
+        connect_button.disconnect(handler_id)
+    }
+    ui.set_state(UiState::ChooseServer {
+        user_id,
+        saved_volumes,
+    });
+}
+
+async fn try_reconnect(
+    network_handle: NetworkHandle,
+    audio_handle: AudioHandle,
+    network_event_sender: Sender<NetworkEvent>,
+    ui: Rc<RefCell<UiModel>>,
+    user_id: UserId,
+    saved_volumes: HashMap<UserId, u16>,
+    username: String,
+    server: String,
+) {
+    let builder = {
+        let mut ui = ui.borrow_mut();
+        ui.set_state(UiState::Reconnecting);
+        ui.builder.clone()
+    };
+
+    let connect_button: gtk::Button = builder.object("connect_button").unwrap();
+    let connect_button_label: gtk::Label = builder.object("connect_button_label").unwrap();
+    let connect_progress: gtk::ProgressBar = builder.object("connect_progress").unwrap();
+    let connect_failure_status: gtk::Label = builder.object("connect_failure_status").unwrap();
+
+    connect_button_label.set_label("Cancel reconnecting...");
+
+    connect_progress.set_opacity(1f64);
+    let completion_params = Rc::new(RefCell::new(Some((user_id, saved_volumes))));
+    {
+        let completion_params = completion_params.clone();
+        let connect_progress = connect_progress.clone();
+        timeout_add_local(Duration::from_millis(80), move || {
+            if completion_params.borrow().is_some() {
+                connect_progress.pulse();
+                Continue
+            } else {
+                Break
+            }
+        });
+    };
+
+    let click_handler_id = Rc::new(Cell::new(None));
+    (*click_handler_id).set(Some({
+        let ui = ui.clone();
+        let completion_params = completion_params.clone();
+        let click_handler_id = click_handler_id.clone();
+        let connect_progress = connect_progress.clone();
+        let connect_button_label = connect_button_label.clone();
+        connect_button.connect_clicked(move |connect_button| {
+            let Some((user_id, saved_volumes)) = completion_params.replace(None) else {
+                return;
+            };
+
+            finish_cancel_reconnect(
+                ui.borrow_mut().deref_mut(),
+                &connect_progress,
+                connect_button,
+                &connect_button_label,
+                &click_handler_id,
+                user_id,
+                saved_volumes,
+            )
+        })
+    }));
+
+    loop {
+        sleep(Duration::from_secs(1)).await;
+
+        if completion_params.borrow().is_none() {
+            return;
+        }
+
+        let connect_result =
+            network::future::connect(&network_handle, server.clone(), username.clone(), user_id)
+                .await;
+
+        match connect_result {
+            Ok((client_id, existing_users, round_trip_latency)) => {
+                let Some((user_id, saved_volumes)) = completion_params.replace(None) else {
+                    return;
+                };
+
+                finish_connect(
+                    audio_handle,
+                    network_handle,
+                    network_event_sender,
+                    ui,
+                    client_id,
+                    existing_users,
+                    round_trip_latency,
+                    username,
+                    server,
+                    user_id,
+                    saved_volumes,
+                );
+                connect_progress.set_opacity(0f64);
+                connect_button_label.set_label("Connect");
+                if let Some(handler_id) = (*click_handler_id).replace(None) {
+                    connect_button.disconnect(handler_id)
+                }
+                return;
+            }
+            Err(e) => {
+                if let ConnectError::IncompatibleServerProtocolVersion(server_version) = e {
+                    let error_message = if server_version > packet::PROTOCOL_VERSION {
+                        format!(
+                            "App is out-of-date compared to server ({} < {}), please update Comms",
+                            packet::PROTOCOL_VERSION,
+                            server_version
+                        )
+                    } else {
+                        format!(
+                            "App is newer than out-of-date server ({} > {})",
+                            packet::PROTOCOL_VERSION,
+                            server_version
+                        )
+                    };
+
+                    let Some((user_id, saved_volumes)) = completion_params.replace(None) else {
+                        return;
+                    };
+
+                    finish_cancel_reconnect(
+                        ui.borrow_mut().deref_mut(),
+                        &connect_progress,
+                        &connect_button,
+                        &connect_button_label,
+                        &click_handler_id,
+                        user_id,
+                        saved_volumes,
+                    );
+                    connect_failure_status.set_label(&error_message);
+                    return;
+                };
+            }
         }
     }
 }
@@ -467,9 +652,12 @@ enum UiState {
         user_list: gtk::ListBox,
         client_id: ClientId,
         round_trip_latency: Duration,
+        username: String,
+        server: String,
     },
     Connecting,
     Disconnecting,
+    Reconnecting,
 }
 
 struct UiModel {
@@ -512,19 +700,21 @@ async fn handle_network_events(
     while let Some(event) = receiver.next().await {
         match event {
             NetworkEvent::SocketClosed => {
-                let (users, user_list, user_id, saved_volumes) =
+                let (users, user_list, user_id, saved_volumes, username, server) =
                     match ui.borrow_mut().use_state(|state| {
                         if let UiState::Main {
                             users,
                             user_list,
                             user_id,
                             saved_volumes,
+                            username,
+                            server,
                             ..
                         } = state
                         {
                             (
                                 UiState::Disconnecting,
-                                Some((users, user_list, user_id, saved_volumes)),
+                                Some((users, user_list, user_id, saved_volumes, username, server)),
                             )
                         } else {
                             (state, None)
@@ -543,30 +733,41 @@ async fn handle_network_events(
                 )
                 .await;
 
-                ui.borrow_mut().set_state(UiState::ChooseServer {
+                {
+                    let builder = &ui.borrow().builder;
+                    let connect_failure_status: gtk::Label =
+                        builder.object("connect_failure_status").unwrap();
+                    connect_failure_status.set_text("Disconnected: the socket closed");
+                }
+
+                try_reconnect(
+                    network.clone(),
+                    audio.clone(),
+                    network_event_sender.clone(),
+                    ui.clone(),
                     user_id,
                     saved_volumes,
-                });
-
-                let builder = &ui.borrow().builder;
-                let connect_failure_status: gtk::Label =
-                    builder.object("connect_failure_status").unwrap();
-                connect_failure_status.set_text("Disconnected: the socket closed");
+                    username,
+                    server,
+                )
+                .await;
             }
             NetworkEvent::TimedOut => {
-                let (users, user_list, user_id, saved_volumes) =
+                let (users, user_list, user_id, saved_volumes, username, server) =
                     match ui.borrow_mut().use_state(|state| {
                         if let UiState::Main {
                             users,
                             user_list,
                             user_id,
                             saved_volumes,
+                            username,
+                            server,
                             ..
                         } = state
                         {
                             (
                                 UiState::Disconnecting,
-                                Some((users, user_list, user_id, saved_volumes)),
+                                Some((users, user_list, user_id, saved_volumes, username, server)),
                             )
                         } else {
                             (state, None)
@@ -585,30 +786,41 @@ async fn handle_network_events(
                 )
                 .await;
 
-                ui.borrow_mut().set_state(UiState::ChooseServer {
+                {
+                    let builder = &ui.borrow().builder;
+                    let connect_failure_status: gtk::Label =
+                        builder.object("connect_failure_status").unwrap();
+                    connect_failure_status.set_text("Disconnected: connection timed out");
+                }
+
+                try_reconnect(
+                    network.clone(),
+                    audio.clone(),
+                    network_event_sender.clone(),
+                    ui.clone(),
                     user_id,
                     saved_volumes,
-                });
-
-                let builder = &ui.borrow().builder;
-                let connect_failure_status: gtk::Label =
-                    builder.object("connect_failure_status").unwrap();
-                connect_failure_status.set_text("Disconnected: connection timed out");
+                    username,
+                    server,
+                )
+                .await;
             }
             NetworkEvent::NetworkError => {
-                let (users, user_list, user_id, saved_volumes) =
+                let (users, user_list, user_id, saved_volumes, username, server) =
                     match ui.borrow_mut().use_state(|state| {
                         if let UiState::Main {
                             users,
                             user_list,
                             user_id,
                             saved_volumes,
+                            username,
+                            server,
                             ..
                         } = state
                         {
                             (
                                 UiState::Disconnecting,
-                                Some((users, user_list, user_id, saved_volumes)),
+                                Some((users, user_list, user_id, saved_volumes, username, server)),
                             )
                         } else {
                             (state, None)
@@ -627,15 +839,24 @@ async fn handle_network_events(
                 )
                 .await;
 
-                ui.borrow_mut().set_state(UiState::ChooseServer {
+                {
+                    let builder = &ui.borrow().builder;
+                    let connect_failure_status: gtk::Label =
+                        builder.object("connect_failure_status").unwrap();
+                    connect_failure_status.set_text("Disconnected: encountered network issue");
+                }
+
+                try_reconnect(
+                    network.clone(),
+                    audio.clone(),
+                    network_event_sender.clone(),
+                    ui.clone(),
                     user_id,
                     saved_volumes,
-                });
-
-                let builder = &ui.borrow().builder;
-                let connect_failure_status: gtk::Label =
-                    builder.object("connect_failure_status").unwrap();
-                connect_failure_status.set_text("Disconnected: encountered network issue");
+                    username,
+                    server,
+                )
+                .await;
             }
             NetworkEvent::P2pEstablished {
                 round_trip_latency,
@@ -752,19 +973,28 @@ async fn handle_network_events(
                         }
                         ErrorResponse::KIND_ID => {
                             let packet: Packet<ErrorResponse> = packet.finish_parse()?;
-                            let Some((users, user_list, user_id, saved_volumes)) =
+                            let Some((users, user_list, user_id, saved_volumes, username, server)) =
                                 ui.borrow_mut().use_state(|state| {
                                     if let UiState::Main {
                                         users,
                                         user_list,
                                         user_id,
                                         saved_volumes,
+                                        username,
+                                        server,
                                         ..
                                     } = state
                                     {
                                         (
                                             UiState::Disconnecting,
-                                            Some((users, user_list, user_id, saved_volumes)),
+                                            Some((
+                                                users,
+                                                user_list,
+                                                user_id,
+                                                saved_volumes,
+                                                username,
+                                                server,
+                                            )),
                                         )
                                     } else {
                                         (state, None)
@@ -783,18 +1013,27 @@ async fn handle_network_events(
                             )
                             .await;
 
-                            ui.borrow_mut().set_state(UiState::ChooseServer {
+                            {
+                                let builder = &ui.borrow().builder;
+                                let connect_failure_status: gtk::Label =
+                                    builder.object("connect_failure_status").unwrap();
+                                connect_failure_status.set_text(&format!(
+                                    "Disconnected: an error occurred: {:?}",
+                                    packet.body
+                                ));
+                            }
+
+                            try_reconnect(
+                                network.clone(),
+                                audio.clone(),
+                                network_event_sender.clone(),
+                                ui.clone(),
                                 user_id,
                                 saved_volumes,
-                            });
-
-                            let builder = &ui.borrow().builder;
-                            let connect_failure_status: gtk::Label =
-                                builder.object("connect_failure_status").unwrap();
-                            connect_failure_status.set_text(&format!(
-                                "Disconnected: an error occurred: {:?}",
-                                packet.body
-                            ));
+                                username,
+                                server,
+                            )
+                            .await;
                         }
                         _ => (),
                     }
@@ -1094,6 +1333,10 @@ pub fn run(
             let audio = audio.clone();
             let ui = ui.clone();
             Rc::new(RefCell::new(move || {
+                let Some(UiState::ChooseServer { .. }) = ui.borrow().state else {
+                    return;
+                };
+
                 glib_context.spawn_local(try_connect(
                     audio.clone(),
                     network.clone(),
@@ -1186,7 +1429,6 @@ pub fn run(
             .and_then(|h| h.to_str())
         {
             use gdk4_win32::Win32Surface;
-            use glib::SignalHandlerId;
             use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
             use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
             use windows::Win32::UI::WindowsAndMessaging::WM_CLOSE;

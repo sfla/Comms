@@ -44,7 +44,7 @@
           <object class="GtkBox">
             <property name="orientation">vertical</property>
             <child>
-              <object class="GtkLabel">
+              <object class="GtkLabel" id="connect_button_label">
                 <property name="label">Connect</property>
                 <property name="hexpand">1</property>
               </object>
