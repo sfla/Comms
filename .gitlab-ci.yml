@@ -14,18 +14,21 @@ build_linux:
     - cargo test
   tags:
     - linux
+  environment: Linux
 
 build_windows:
   stage: build
   only:
     - merge_requests
   script:
+    - '$env:Path = "C:\gtk-build-comms\gtk\x64\release\bin;" + $env:Path'
     - cargo fmt --all -- --check
     - cargo clippy --locked --all-targets --all-features -- -D warnings
     - cargo test
     - cargo build --all
   tags:
     - windows
+  environment: Windows
 
 build_release_linux:
   stage: build_release
@@ -46,18 +49,20 @@ build_release_linux:
       - target/release/comms-server
   tags:
     - linux
+  environment: Linux
 
 build_release_windows:
   stage: build_release
   only:
     - main
   script:
+    - '$env:Path = "C:\gtk-build-comms\gtk\x64\release\bin;" + $env:Path'
     - if (Test-Path "comms.exe") { rm "comms.exe" }
     - cargo fmt --all -- --check
     - cargo clippy --locked --all-targets --all-features -- -D warnings
     - cargo test
     - cargo build --all --profile release-windows
-    - comms/package.ps1 -hide_console
+    - comms/package.ps1 -hide_console -gtk_build_dir C:\gtk-build-comms\gtk\x64\release\
     - comms/sign.ps1
     - sentry-cli upload-dif .\target\release-windows\comms.pdb --org comms --project comms-app --include-sources
   artifacts:
@@ -69,6 +74,7 @@ build_release_windows:
       - target/release-windows/comms-server.exe
   tags:
     - windows
+  environment: Windows
 
 deploy_release:
   stage: deploy_release
@@ -93,3 +99,4 @@ deploy_release:
     - ssh-agent -k
   dependencies:
     - build_release_linux
+  environment: Linux

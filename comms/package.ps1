@@ -64,7 +64,7 @@ if (-not (Test-Path -Path $package_dir) -or -not $reuse_package_dir) {
             $dll_path = where.exe $dll_name 2>$null
             $ErrorActionPreference = "Stop"
 
-            if (($dll_path -eq $null) -or (-not $dll_path.Contains("gtk-build\gtk\x64"))) {
+            if (($dll_path -eq $null) -or (-not $dll_path.Contains($gtk_build_dir))) {
                 continue
             }
 
