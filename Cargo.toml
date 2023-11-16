@@ -12,6 +12,9 @@ members = [
     "loopback-cli",
 ]
 
+[workspace.lints.clippy]
+too_many_arguments = "allow"
+
 [profile.release]
 lto = "thin"
 debug = true
