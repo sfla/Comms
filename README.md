@@ -37,21 +37,25 @@ Round-trip audio latency, as casually measured from residential internet:
 ## Linux Build Instructions
 
 1. Install `rust`, GTK4 and opus libs
-2. Install Libadwaita 1.2 (likely by building it from source)
+2. Install Libadwaita 1.3 (likely by building it from source)
 3. From `comms`, run `cargo run`
 
 ## Windows Build Instructions
 
 1. Install [`rust`](https://rustup.rs/). Follow the directions and install the Visual Studio tools Rust recommends.
-2. Follow the [`gvsbuild` steps to build GTK4 with MSVC tools](https://github.com/wingtk/gvsbuild)
-   * When the `gvsbuild` steps recommend setting `$env:Path`, make it a permanent change by doing the following:
+2. Ensure Rust is using the `msvc` toolchain, if it isn't already: `rustup default stable-msvc`
+3. Install GTK4 and libadwaita
+   1. Install [`gvsbuild==2023.7.1`](https://github.com/wingtk/gvsbuild)
+      * Follow the documented steps (install git, MSYS2, Python, etc), but do `pipx install gvsbuild==2023.7.1` instead (when asked to do `pipx install gvsbuild`)
+   2. Build GTK4: `gvsbuild build gtk4 adwaita-icon-theme libadwaita`
+   3. Set the `gvsbuild` environment variables:
       1. From the Start menu, go to the Control Panel entry for “Edit environment variables for your account”.
-      2. Double-click the `Path` row in the top list of variables. Click “New” to add a new item to the list.
-      3. Paste in `C:\gtk-build\gtk\x64\release\bin`
-      4. Click "OK" twice.
-3. Build Libadwaita with `gvsbuild`: `gvsbuild build libadwaita`
-4. Ensure Rust is using the `msvc` toolchain, if it isn't already: `rustup default stable-msvc`
-5. From `comms`, run `cargo run --bin comms`
+      2. Click `New...` in the top half of the window, set the name as `LIB` and the value as `C:\gtk-build\gtk\x64\release\lib`, then click `OK`
+      3. Click the same `New...` button again, set the name as `INCLUDE` and the value as `C:\gtk-build\gtk\x64\release\include;C:\gtk-build\gtk\x64\release\include\cairo;C:\gtk-build\gtk\x64\release\include\glib-2.0;C:\gtk-build\gtk\x64\release\include\gobject-introspection-1.0;C:\gtk-build\gtk\x64\release\lib\glib-2.0\include`, then click `OK`
+      4. Double-click the `Path` row in the top list of variables. Click “New” to add a new item to the list.
+      5. Paste in `C:\gtk-build\gtk\x64\release\bin`
+      6. Click "OK" twice.
+4. From the `comms` repository, run `cargo run --bin comms`
 
 ### Windows _Faster_ Build Instructions
 
