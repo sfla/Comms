@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 adw = { version = "0.5", package = "libadwaita", features = ["gtk_v4_4", "v1_2"] }
-async-channel = "1.7.1"
+async-channel = "2.1"
 async-std = "1.4"
 audiopus = "0.2.0"
 chrono = "0.4.22"
@@ -42,7 +42,7 @@ features = [
 version = "0.7"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.51.0"
+version = "0.52.0"
 features = [
     "implement",
     "Win32_Foundation",

@@ -7,13 +7,13 @@ edition = "2021"
 [dependencies]
 dasp = { version = "0.11.0", features = ["interpolate", "interpolate-linear"] }
 ringbuffer = "0.15"
-audio_thread_priority = "0.27"
+audio_thread_priority = "0.30"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 lazy_static = "1.4"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.51.0"
+version = "0.52.0"
 features = [
     "implement",
     "Win32_Devices_Properties",

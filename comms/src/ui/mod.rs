@@ -1053,9 +1053,10 @@ async fn handle_network_events(
 }
 
 async fn handle_ui_commands(
-    mut receiver: async_channel::Receiver<UICommand>,
+    receiver: async_channel::Receiver<UICommand>,
     ui: Rc<RefCell<UiModel>>,
 ) {
+    futures::pin_mut!(receiver);
     while let Some(event) = receiver.next().await {
         match event {
             UICommand::UserIsSpeaking {
