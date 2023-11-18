@@ -11,5 +11,8 @@ fn main() -> std::io::Result<()> {
             .set_icon("resources/logo.ico")
             .compile()?;
     }
+    // Workaround until https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/6583
+    #[cfg(windows)]
+    println!("cargo:rustc-link-arg=/STACK:{}", 4 * 1024 * 1024);
     Ok(())
 }
