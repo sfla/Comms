@@ -5,17 +5,20 @@ authors = ["Mitchell Hentges <mitch9654@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+audio-device = { path = "../audio-device" }
 adw = { version = "0.5", package = "libadwaita", features = ["gtk_v4_4", "v1_2"] }
 async-channel = "2.1"
 async-std = "1.4"
 audiopus = "0.2.0"
 chrono = "0.4.22"
+comms-lib = { path = "../comms-lib" }
 directories = "5.0"
 futures = "0.3"
 futures-timer = "3.0"
 gdk-pixbuf = "0.18"
 gio = "0.18"
 glib = "0.18"
+gtk = { version = "0.7", package = "gtk4", features = ["v4_6"]}
 include_dir = "0.7"
 lewton = "0.10.2"
 mio = { version = "0.8", features = ["net", "os-poll"] }
@@ -24,26 +27,11 @@ sentry = { version = "0.31", features = ["debug-images"]}
 serde = "1.0"
 serde_json = "1.0"
 ureq = { version = "2.5.0", features = ["json"]}
+uuid = { version = "1.1.1", features = ["v4", "fast-rng"]}
 
-[dependencies.audio-device]
-path = "../audio-device"
-
-[dependencies.comms-lib]
-path = "../comms-lib"
-
-[dependencies.gtk]
-package = "gtk4"
-version = "0.7"
-features = [
-    "v4_6",
-]
-
-[target.'cfg(target_os = "windows")'.dependencies.gdk4-win32]
-version = "0.7"
-
-[target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.52.0"
-features = [
+[target.'cfg(target_os = "windows")'.dependencies]
+gdk4-win32 = "0.7"
+windows = { version = "0.52.0", features = [
     "implement",
     "Win32_Foundation",
     "Win32_Security",
@@ -51,21 +39,14 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Registry",
     "Win32_System_Threading",
-]
+]}
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2.69"
 libpulse-binding = { version = "2.13", default-features = false }
-
-[dependencies.uuid]
-version = "1.1.1"
-features = [
-    "v4",
-    "fast-rng",
-]
-
-[target.'cfg(windows)'.build-dependencies]
-winres = "0.1"
 
 [lints]
 workspace = true

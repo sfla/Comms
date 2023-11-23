@@ -5,16 +5,14 @@ authors = ["Mitchell Hentges <mitch9654@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+comms-lib = { path = "../comms-lib" }
 dasp = { version = "0.11.0", features = ["interpolate", "interpolate-linear"] }
 ringbuffer = "0.15"
 audio_thread_priority = "0.30"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 lazy_static = "1.4"
-
-[target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.52.0"
-features = [
+windows = { version = "0.52.0", features = [
     "implement",
     "Win32_Devices_Properties",
     "Win32_Foundation",
@@ -29,11 +27,8 @@ features = [
     "Win32_System_Threading",
     "Win32_System_Variant",
     "Win32_UI_Shell_PropertiesSystem",
-]
+]}
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2.69"
 libpulse-binding = { version = "2.13", default-features = false }
-
-[dependencies.comms-lib]
-path = "../comms-lib"

@@ -21,11 +21,7 @@ path = "src/loopback.rs"
 #path = "src/opus_drop_packets.rs"
 
 [dependencies]
+audio-device = { path = "../audio-device" }
 audiopus = "0.2.0"
+comms-lib = { path = "../comms-lib" }
 dasp = "0.11.0"
-
-[dependencies.audio-device]
-path = "../audio-device"
-
-[dependencies.comms-lib]
-path = "../comms-lib"

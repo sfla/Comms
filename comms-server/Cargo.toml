@@ -6,9 +6,7 @@ edition = "2021"
 
 [dependencies]
 async-std = "1.4"
+comms-lib = { path = "../comms-lib" }
 futures = "0.3"
 futures-timer = "3.0"
 mio = { version = "0.8", features = ["net", "os-poll"] }
-
-[dependencies.comms-lib]
-path = "../comms-lib"
