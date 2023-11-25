@@ -1,5 +1,5 @@
 use crate::client::{AnyClientRef, Clients};
-use crate::future::{NetworkFuture, SendResponse};
+use crate::future::SendResponse;
 use crate::task::FutureError;
 use comms_lib::network::{Protocol, ServerUdpPacket, UdpConnection};
 use comms_lib::packet::{ClientId, PacketBody, PacketId};
@@ -184,15 +184,6 @@ impl SendPacket {
                 for client in clients {
                     handle.send(protocol.clone(), client, self.packet.clone())
                 }
-            }
-        }
-    }
-
-    pub fn send_expect(self, handle: &NetworkHandle) -> NetworkFuture {
-        match self.destination {
-            Target::One(dest) => NetworkFuture::new(handle, self.packet, self.protocol, dest),
-            Target::Many(_) => {
-                unimplemented!("send_expect only implemented for single targets");
             }
         }
     }

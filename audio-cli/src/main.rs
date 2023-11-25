@@ -2,7 +2,7 @@ use audiopus::coder::Encoder;
 use audiopus::{Application, Channels, SampleRate};
 use comms_lib::packet::{
     AssociateUdp, AssociateUdpAccepted, AudioFromClient, AudioIndex, FinishConnect,
-    FinishConnectAccepted, Hello, KeepAlive, KeepAliveAck, Packet, PacketBody, PacketId,
+    FinishConnectAccepted, Hello, Packet, PacketBody, PacketId,
 };
 use comms_lib::serialization::{
     IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame, SerializeError,
@@ -184,7 +184,7 @@ fn parse_arguments(
 }
 
 fn handle_runtime_tcp_events(
-    serializer: &mut BeepPacketSerializer,
+    _serializer: &mut BeepPacketSerializer,
     tcp: &mut TcpConnection,
 ) -> io::Result<()> {
     loop {
@@ -195,12 +195,7 @@ fn handle_runtime_tcp_events(
             break;
         };
 
-        let packet = IncomingPacketFrame::from(packet);
-        let id = packet.header.id;
-        if packet.header.kind == KeepAlive::KIND_ID {
-            tcp.raw
-                .write_all(&serializer.serialize(Some(id), &KeepAliveAck).unwrap())?;
-        }
+        let _packet = IncomingPacketFrame::from(packet);
     }
     Ok(())
 }

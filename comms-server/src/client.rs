@@ -34,7 +34,7 @@ pub struct Connection {
 impl Connection {
     pub fn new(stream: TcpStream) -> Self {
         Connection {
-            tcp: TcpConnection::new(stream),
+            tcp: TcpConnection::new(stream).0,
             tcp_writable: false,
             next_packet_id: NextPacketId::new(),
             outgoing_queue: VecDeque::new(),

@@ -1,11 +1,3 @@
-//! Feeds back the input stream directly into the output stream.
-//!
-//! Assumes that the input and output devices can use the same stream format and that they support
-//! the f32 sample format.
-//!
-//! Uses a delay of `LATENCY_MS` milliseconds in case the default input and output streams are not
-//! precisely synchronised.
-
 use crate::client::{Clients, ConnectingClient, Connection};
 use crate::endpoints::{
     close_connection, handle_tcp_stream, handle_udp_packet, spawn_close_connection,
@@ -16,10 +8,7 @@ use crate::task::{FutureError, FutureResult};
 use async_std::task::sleep;
 use comms_lib::network::{CommsNetworkError, ServerUdpReadIter, UdpConnection};
 use comms_lib::packet;
-use comms_lib::packet::{ClientId, KeepAliveAck, PacketBody};
-use futures::future::Either;
-use futures::pin_mut;
-use futures_timer::Delay;
+use comms_lib::packet::ClientId;
 use mio::net::TcpListener;
 use mio::net::UdpSocket;
 use mio::{Events, Interest, Poll, Token, Waker};
@@ -36,7 +25,6 @@ mod future;
 mod network;
 mod task;
 
-/// Return true if connection is
 async fn ping_keep_alive(
     keep_alive_packet: Result<SendPacket, FutureError>,
     network_handle: &NetworkHandle,
@@ -45,19 +33,7 @@ async fn ping_keep_alive(
         return Some(CloseConnectionReason::MalformedData);
     };
 
-    let timeout = Delay::new(Duration::from_secs(5));
-    let keepalive_future = packet.send_expect(network_handle);
-    pin_mut!(keepalive_future);
-    match futures::future::select(timeout, keepalive_future).await {
-        Either::Left(_) => {
-            return Some(CloseConnectionReason::KeepaliveTimeout);
-        }
-        Either::Right((packet, _)) => {
-            if packet.header.kind != KeepAliveAck::KIND_ID {
-                return Some(CloseConnectionReason::MalformedData);
-            }
-        }
-    }
+    packet.send(network_handle).await;
     None
 }
 

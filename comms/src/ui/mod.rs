@@ -752,59 +752,6 @@ async fn handle_network_events(
                 )
                 .await;
             }
-            NetworkEvent::TimedOut => {
-                let (users, user_list, user_id, saved_volumes, username, server) =
-                    match ui.borrow_mut().use_state(|state| {
-                        if let UiState::Main {
-                            users,
-                            user_list,
-                            user_id,
-                            saved_volumes,
-                            username,
-                            server,
-                            ..
-                        } = state
-                        {
-                            (
-                                UiState::Disconnecting,
-                                Some((users, user_list, user_id, saved_volumes, username, server)),
-                            )
-                        } else {
-                            (state, None)
-                        }
-                    }) {
-                        Some(m) => m,
-                        None => continue,
-                    };
-
-                disconnect_from_server(
-                    users,
-                    user_list,
-                    ui.clone(),
-                    network.clone(),
-                    audio.clone(),
-                )
-                .await;
-
-                {
-                    let builder = &ui.borrow().builder;
-                    let connect_failure_status: gtk::Label =
-                        builder.object("connect_failure_status").unwrap();
-                    connect_failure_status.set_text("Disconnected: connection timed out");
-                }
-
-                try_reconnect(
-                    network.clone(),
-                    audio.clone(),
-                    network_event_sender.clone(),
-                    ui.clone(),
-                    user_id,
-                    saved_volumes,
-                    username,
-                    server,
-                )
-                .await;
-            }
             NetworkEvent::NetworkError => {
                 let (users, user_list, user_id, saved_volumes, username, server) =
                     match ui.borrow_mut().use_state(|state| {

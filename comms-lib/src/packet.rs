@@ -198,10 +198,3 @@ pub struct Disconnect {
 impl PacketBody for Disconnect {
     const KIND_ID: PacketKind = 11u8;
 }
-
-#[derive(Serialize, Deserialize)]
-pub struct KeepAliveAck;
-
-impl PacketBody for KeepAliveAck {
-    const KIND_ID: PacketKind = 16u8;
-}

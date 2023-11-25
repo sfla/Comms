@@ -28,18 +28,35 @@ pub struct TcpConnection {
 }
 
 impl TcpConnection {
-    pub fn new(stream: TcpStream) -> Self {
-        Self {
-            stream,
-            is_writable: false,
-            incoming_stream: Box::new([0; TCP_STREAM_BUFFER_SIZE]),
-            incoming_stream_start: 0,
-            incoming_stream_end: 0,
-            outgoing_stream: Box::new([0; TCP_STREAM_BUFFER_SIZE]),
-            outgoing_stream_start: 0,
-            outgoing_stream_end: 0,
-            next_incoming_header: None,
-        }
+    pub fn new(stream: TcpStream) -> (Self, Option<io::Error>) {
+        #[cfg(target_os = "linux")]
+        let error = {
+            use std::os::fd::AsRawFd;
+            use std::os::fd::BorrowedFd;
+            use std::time::Duration;
+
+            let fd = unsafe { BorrowedFd::borrow_raw(stream.as_raw_fd()) };
+            let raw_socket = socket2::SockRef::from(&fd);
+            raw_socket
+                .set_tcp_user_timeout(Some(Duration::from_secs(6)))
+                .err()
+        };
+        #[cfg(not(target_os = "linux"))]
+        let error: Option<io::Error> = None;
+        (
+            Self {
+                stream,
+                is_writable: false,
+                incoming_stream: Box::new([0; TCP_STREAM_BUFFER_SIZE]),
+                incoming_stream_start: 0,
+                incoming_stream_end: 0,
+                outgoing_stream: Box::new([0; TCP_STREAM_BUFFER_SIZE]),
+                outgoing_stream_start: 0,
+                outgoing_stream_end: 0,
+                next_incoming_header: None,
+            },
+            error,
+        )
     }
 
     pub fn write_until_blocked(&mut self) -> Result<(), io::Error> {

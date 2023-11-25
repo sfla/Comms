@@ -14,8 +14,8 @@ use comms_lib::network::{
     ClientUdpPacket, ClientUdpReadIter, CommsNetworkError, TcpConnection, UdpConnection,
 };
 use comms_lib::packet::{
-    AudioFromClient, AudioToClient, ClientId, Hello, KeepAlive, KeepAliveAck, P2pAcknowledge,
-    P2pAcknowledgeBack, P2pSynchronize, Packet, PacketBody,
+    AudioFromClient, AudioToClient, ClientId, Hello, KeepAlive, P2pAcknowledge, P2pAcknowledgeBack,
+    P2pSynchronize, Packet, PacketBody,
 };
 use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame};
 
@@ -187,11 +187,6 @@ fn handle_udp_packet(
                 })
                 .unwrap();
         }
-        KeepAlive::KIND_ID => network_handle.command(NetworkCommand::Packet {
-            protocol: Protocol::UdpP2p(addr),
-            packet: OutgoingPacketFrame::from_packet(Some(parsed_packet.header.id), &KeepAliveAck)?,
-            send_response: None,
-        }),
         _ => {
             event_sender
                 .try_send(NetworkEvent::Packet(parsed_packet))
@@ -216,7 +211,6 @@ fn handle_tcp_packet(
         SendResponse<Result<ConnectSuccess, ConnectError>>,
     )>,
     event_sender: &mut Sender<NetworkEvent>,
-    network_handle: &NetworkHandle,
 ) -> Result<(), CommsNetworkError> {
     if let Some(reply_to) = stream_packet.header.reply_to {
         if let Some((Some(sender), None)) = reply_map.remove(&reply_to) {
@@ -235,12 +229,6 @@ fn handle_tcp_packet(
                 udp_local_addr,
             }));
         }
-    } else if kind == KeepAlive::KIND_ID {
-        network_handle.command(NetworkCommand::Packet {
-            protocol: Protocol::Tcp,
-            packet: OutgoingPacketFrame::from_packet(Some(stream_packet.header.id), &KeepAliveAck)?,
-            send_response: None,
-        })
     } else {
         event_sender
             .try_send(NetworkEvent::Packet(stream_packet.into()))
@@ -278,10 +266,15 @@ fn connect(
     poll.registry()
         .register(&mut tcp, tcp_token, Interest::READABLE | Interest::WRITABLE)
         .unwrap();
+
+    let (stream, error) = TcpConnection::new(tcp);
+    if let Some(e) = error {
+        panic!("Expected to be able to set TCP timeout {:?}", e);
+    }
     *connection = Some(Connection::new(
         udp,
         udp_token,
-        TcpConnection::new(tcp),
+        stream,
         tcp_token,
         destination,
         local_addr,
@@ -593,7 +586,6 @@ impl Worker {
                                     client_id,
                                     connect_response,
                                     &mut event_sender,
-                                    &network_handle,
                                 )
                             }) {
                                 Err(CommsNetworkError::Closed) => {

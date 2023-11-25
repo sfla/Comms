@@ -1,13 +1,12 @@
-use crate::network::NetworkHandle;
-use comms_lib::network::Protocol;
-use comms_lib::packet::ClientId;
-use comms_lib::serialization::{IncomingPacketFrame, OutgoingPacketFrame};
-use futures::channel::oneshot;
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
+
+use futures::channel::oneshot;
+
+use comms_lib::serialization::IncomingPacketFrame;
 
 pub struct SendResponse {
     sender: oneshot::Sender<IncomingPacketFrame>,
@@ -44,33 +43,6 @@ impl Future for NetworkFuture {
             Err(_) => {
                 panic!("NetworkFuture was cancelled (other side didn't send response?)");
             }
-        }
-    }
-}
-
-impl NetworkFuture {
-    pub fn new(
-        handle: &NetworkHandle,
-        outgoing: OutgoingPacketFrame,
-        protocol: Protocol,
-        dest: ClientId,
-    ) -> Self {
-        let (sender, receiver) = oneshot::channel();
-        let waker = Rc::new(RefCell::new(None));
-
-        handle.send_expect(
-            protocol,
-            dest,
-            outgoing,
-            SendResponse {
-                sender,
-                waker: waker.clone(),
-            },
-        );
-
-        NetworkFuture {
-            receiver: Rc::new(RefCell::new(receiver)),
-            waker,
         }
     }
 }

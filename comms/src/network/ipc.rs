@@ -26,7 +26,6 @@ pub enum NetworkEvent {
         round_trip_latency: Duration,
         is_from_lead_client: bool,
     },
-    TimedOut,
 }
 
 pub struct ConnectSuccess {

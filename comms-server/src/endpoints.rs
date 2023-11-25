@@ -5,9 +5,8 @@ use crate::task::{FutureResult, Spawner};
 use comms_lib::network::CommsNetworkError;
 use comms_lib::packet::{
     AssociateUdp, AssociateUdpAccepted, AudioFromClient, AudioToClient, ClientId, Disconnect,
-    DisconnectReason, ErrorResponse, FinishConnect, FinishConnectAccepted, KeepAlive, KeepAliveAck,
-    NetworkUser, P2pEstablished, Packet, PacketBody, PacketId, ProtocolVersion, UserJoined,
-    UserLeft,
+    DisconnectReason, ErrorResponse, FinishConnect, FinishConnectAccepted, KeepAlive, NetworkUser,
+    P2pEstablished, Packet, PacketBody, PacketId, ProtocolVersion, UserJoined, UserLeft,
 };
 use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, SerializeError};
 use futures::future;
@@ -197,17 +196,6 @@ async fn receive_disconnect_packet(context: Context, packet: Packet<Disconnect>)
     .await
 }
 
-async fn receive_keep_alive(context: Context, packet: Packet<KeepAlive>) -> FutureResult {
-    SendPacket::tcp(
-        Target::One(context.client_id),
-        Some(packet.id),
-        KeepAliveAck,
-    )?
-    .send(&context.network_handle)
-    .await;
-    Ok(())
-}
-
 async fn sent_wrong_packet(context: Context, packet_id: PacketId) -> FutureResult {
     let outgoing = SendPacket::tcp(
         Target::One(context.client_id),
@@ -283,10 +271,7 @@ fn tcp_packet_to_endpoint(
         Disconnect::KIND_ID => spawner
             .borrow()
             .spawn(receive_disconnect_packet(context, packet.finish_parse()?)),
-        KeepAlive::KIND_ID => spawner
-            .borrow()
-            .spawn(receive_keep_alive(context, packet.finish_parse()?)),
-        KeepAliveAck::KIND_ID => (),
+        KeepAlive::KIND_ID => (),
         _ => spawner
             .borrow()
             .spawn(sent_wrong_packet(context, packet.header.id)),
@@ -305,7 +290,6 @@ fn udp_packet_to_endpoint(
         }
         P2pEstablished::KIND_ID => spawner.spawn(p2p_established(context, packet.finish_parse()?)),
         KeepAlive::KIND_ID => (),
-        KeepAliveAck::KIND_ID => (),
         _ => spawner.spawn(sent_wrong_packet(context, packet.header.id)),
     };
     Ok(())
@@ -317,7 +301,6 @@ pub enum CloseConnectionReason {
     SocketClosed,
     MalformedData,
     IncompatibleClientVersion(ProtocolVersion),
-    KeepaliveTimeout,
 }
 
 pub fn spawn_close_connection(

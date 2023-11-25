@@ -22,7 +22,7 @@ use comms_lib::network::CommsNetworkError;
 use comms_lib::packet;
 use comms_lib::packet::{
     AssociateUdp, AssociateUdpAccepted, ClientId, FinishConnect, FinishConnectAccepted, KeepAlive,
-    KeepAliveAck, NetworkUser, P2pAcknowledgeBack, Packet, PacketBody, UserId,
+    NetworkUser, P2pAcknowledgeBack, Packet, PacketBody, UserId,
 };
 use comms_lib::serialization::{IncomingPacketFrame, OutgoingPacketFrame};
 
@@ -232,30 +232,17 @@ pub async fn keep_alive(handle: NetworkHandle, mut network_event_sender: Sender<
     loop {
         sleep(Duration::from_secs(10)).await;
 
-        let timeout = Delay::new(Duration::from_secs(5));
-        let keepalive_future = request_expect(&handle, Protocol::Tcp, None, KeepAlive);
-        pin_mut!(keepalive_future);
-        match futures::future::select(timeout, keepalive_future).await {
-            Either::Left(_) => {
+        match send(&handle, Protocol::Tcp, None, KeepAlive) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("{e:?}");
                 network_event_sender
-                    .send(NetworkEvent::TimedOut)
+                    .send(NetworkEvent::NetworkError)
                     .await
                     .unwrap();
                 return;
             }
-            Either::Right((packet_result, _)) => match packet_result {
-                Ok::<Packet<KeepAliveAck>, _>(_) => {}
-                Err(e) => {
-                    eprintln!("{e:?}");
-                    network_event_sender
-                        .send(NetworkEvent::NetworkError)
-                        .await
-                        .unwrap();
-                    return;
-                }
-            },
-        }
-
+        };
         if let Err(e) = send(&handle, Protocol::Udp, None, KeepAlive) {
             eprintln!("{e:?}");
             network_event_sender
