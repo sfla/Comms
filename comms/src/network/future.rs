@@ -28,95 +28,77 @@ use comms_lib::serialization::{IncomingPacketFrame, OutgoingPacketFrame};
 
 use crate::network::ipc::{ConnectError, NetworkCommand, NetworkEvent, NetworkHandle, Protocol};
 
-async fn connect_without_timeout(
-    handle: &NetworkHandle,
-    destination: String,
-    username: String,
-    user_id: UserId,
-) -> Result<(ClientId, Vec<NetworkUser>, Duration), ConnectError> {
-    let destination_with_port = format!("{destination}:18847");
-    let destination = match destination_with_port.to_socket_addrs().await {
-        Ok(mut addresses) => {
-            if let Some(address) = addresses.next() {
-                address
-            } else {
-                return Err(ConnectError::DestinationUnusable);
-            }
-        }
-        Err(_) => {
-            return Err(ConnectError::DestinationUnusable);
-        }
-    };
-
-    let connect_success = NetworkFuture::new(handle, |s| NetworkCommand::Connect {
-        destination,
-        send_response: s,
-    })
-    .await?;
-
-    if connect_success.hello.protocol_version != packet::PROTOCOL_VERSION {
-        return Err(ConnectError::IncompatibleServerProtocolVersion(
-            connect_success.hello.protocol_version,
-        ));
-    }
-
-    let _: Packet<AssociateUdpAccepted> = request_expect(
-        handle,
-        Protocol::Udp,
-        None,
-        AssociateUdp {
-            client_id: connect_success.hello.client_id,
-            local_udp_addr: connect_success.udp_local_addr,
-        },
-    )
-    .await?;
-
-    let connect_accepted: Packet<FinishConnectAccepted> = request_expect(
-        handle,
-        Protocol::Tcp,
-        None,
-        FinishConnect {
-            name: username,
-            user_id,
-        },
-    )
-    .await?;
-    Ok((
-        connect_success.hello.client_id,
-        connect_accepted.body.users,
-        connect_accepted.body.round_trip_latency,
-    ))
-}
-
 pub async fn connect(
     handle: &NetworkHandle,
     destination: String,
     username: String,
     user_id: UserId,
 ) -> Result<(ClientId, Vec<NetworkUser>, Duration), ConnectError> {
-    let timeout = Delay::new(Duration::from_secs(3));
-    let connect_future = connect_without_timeout(handle, destination, username, user_id);
-    pin_mut!(connect_future);
-    match future::select(timeout, connect_future).await {
-        Either::Left(_) => {
-            disconnect(handle, None).await.unwrap();
-            Err(ConnectError::NetworkError)
-        }
-        Either::Right((result, _)) => {
-            if result.is_err() {
-                let reason = match result {
-                    Err(ConnectError::IncompatibleServerProtocolVersion(_)) => {
-                        Some(packet::DisconnectReason::IncompatibleClientVersion(
-                            packet::PROTOCOL_VERSION,
-                        ))
-                    }
-                    _ => None,
-                };
-                disconnect(handle, reason).await.unwrap();
+    let result = async {
+        let destination_with_port = format!("{destination}:18847");
+        let destination = match destination_with_port.to_socket_addrs().await {
+            Ok(mut addresses) => {
+                if let Some(address) = addresses.next() {
+                    address
+                } else {
+                    return Err(ConnectError::DestinationUnusable);
+                }
             }
-            result
+            Err(_) => {
+                return Err(ConnectError::DestinationUnusable);
+            }
+        };
+
+        let connect_success = NetworkFuture::new(handle, |s| NetworkCommand::Connect {
+            destination,
+            send_response: s,
+        })
+        .await?;
+
+        if connect_success.hello.protocol_version != packet::PROTOCOL_VERSION {
+            return Err(ConnectError::IncompatibleServerProtocolVersion(
+                connect_success.hello.protocol_version,
+            ));
         }
+
+        let _: Packet<AssociateUdpAccepted> = request_expect(
+            handle,
+            Protocol::Udp,
+            None,
+            AssociateUdp {
+                client_id: connect_success.hello.client_id,
+                local_udp_addr: connect_success.udp_local_addr,
+            },
+        )
+        .await?;
+
+        let connect_accepted: Packet<FinishConnectAccepted> = request_expect(
+            handle,
+            Protocol::Tcp,
+            None,
+            FinishConnect {
+                name: username,
+                user_id,
+            },
+        )
+        .await?;
+        Ok((
+            connect_success.hello.client_id,
+            connect_accepted.body.users,
+            connect_accepted.body.round_trip_latency,
+        ))
     }
+    .await;
+    if result.is_err() {
+        let reason = match result {
+            Err(ConnectError::IncompatibleServerProtocolVersion(_)) => Some(
+                packet::DisconnectReason::IncompatibleClientVersion(packet::PROTOCOL_VERSION),
+            ),
+            _ => None,
+        };
+        disconnect(handle, reason).await.unwrap();
+    }
+    result
 }
 
 #[derive(Debug)]

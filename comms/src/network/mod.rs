@@ -238,15 +238,10 @@ fn handle_tcp_packet(
 }
 
 fn connect(
-    connection: &mut Option<Connection>,
     poll: &Poll,
     destination: SocketAddr,
     next_poll_token: &mut NextPollToken,
-) -> Result<(), ConnectError> {
-    if connection.is_some() {
-        return Err(ConnectError::AlreadyConnected);
-    }
-
+) -> Result<Connection, ConnectError> {
     let mut tcp = TcpStream::connect(destination)?;
     let mut udp = UdpSocket::bind("0.0.0.0:0".parse().unwrap())?;
 
@@ -271,15 +266,14 @@ fn connect(
     if let Some(e) = error {
         panic!("Expected to be able to set TCP timeout {:?}", e);
     }
-    *connection = Some(Connection::new(
+    Ok(Connection::new(
         udp,
         udp_token,
         stream,
         tcp_token,
         destination,
         local_addr,
-    ));
-    Ok(())
+    ))
 }
 
 impl Worker {
@@ -333,9 +327,9 @@ impl Worker {
                                                         send_response
                                                             .done(Err(ConnectError::NetworkError))
                                                     } else {
-                                                        unimplemented!(
-                                                            "Should gracefully disconnect"
-                                                        );
+                                                        event_sender
+                                                            .try_send(NetworkEvent::NetworkError)
+                                                            .unwrap();
                                                     }
                                                 }
                                             }
@@ -368,17 +362,12 @@ impl Worker {
                                                     .push_outgoing(ClientUdpPacket::new(raw, addr))
                                                 {
                                                     Ok(_) => (),
+                                                    // UDP P2P connections aren't mandatory. If
+                                                    // the connection is refused, ignore it.
+                                                    // TODO maybe disconnect the P2P connection?
                                                     Err(e)
                                                         if e.kind()
-                                                            == io::ErrorKind::ConnectionRefused =>
-                                                    {
-                                                        if let Some((_, send_response)) =
-                                                            connection.connect_response.take()
-                                                        {
-                                                            send_response.done(Err(
-                                                                ConnectError::NetworkError,
-                                                            ));
-                                                        }
+                                                            == io::ErrorKind::ConnectionRefused => {
                                                     }
                                                     Err(e) => return e.into(),
                                                 }
@@ -446,14 +435,17 @@ impl Worker {
                                 destination,
                                 send_response,
                             } => {
-                                let mut connection = &mut self.connection;
-                                if let Err(e) =
-                                    connect(connection, &poll, destination, &mut next_poll_token)
-                                {
-                                    send_response.done(Err(e));
-                                } else if let Some(connection) = &mut connection {
-                                    connection.connect_response =
-                                        Some((connection.local_addr, send_response));
+                                if self.connection.is_some() {
+                                    send_response.done(Err(ConnectError::AlreadyConnected));
+                                    continue;
+                                }
+
+                                match connect(&poll, destination, &mut next_poll_token) {
+                                    Ok(mut c) => {
+                                        c.connect_response = Some((c.local_addr, send_response));
+                                        self.connection = Some(c)
+                                    }
+                                    Err(e) => send_response.done(Err(e)),
                                 }
                             }
                             NetworkCommand::Disconnect { send_response } => {
@@ -484,13 +476,7 @@ impl Worker {
                                                         if e.kind()
                                                             == io::ErrorKind::ConnectionRefused =>
                                                     {
-                                                        if let Some((_, send_response)) =
-                                                            connection.connect_response.take()
-                                                        {
-                                                            send_response.done(Err(
-                                                                ConnectError::NetworkError,
-                                                            ));
-                                                        }
+                                                        // TODO: disconnect the P2P connection
                                                     }
                                                     Err(e) => return e.into(),
                                                 }
@@ -592,7 +578,13 @@ impl Worker {
                                     event_sender.try_send(NetworkEvent::SocketClosed).unwrap();
                                 }
                                 Err(_) => {
-                                    event_sender.try_send(NetworkEvent::NetworkError).unwrap();
+                                    if let Some((_, send_response)) =
+                                        connection.connect_response.take()
+                                    {
+                                        send_response.done(Err(ConnectError::NetworkError));
+                                    } else {
+                                        event_sender.try_send(NetworkEvent::NetworkError).unwrap();
+                                    }
                                 }
                                 _ => {}
                             }
