@@ -198,8 +198,11 @@ impl eframe::App for App {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.add_sized([250.0, 250.0], &mut self.time_plot);
+            ui.horizontal_centered(|ui| {
+                ui.add_sized(
+                    [ui.available_width() / 2.0, ui.available_height()],
+                    &mut self.time_plot,
+                );
                 ui.vertical(|ui| {
                     ui.heading("Measure Audio latency");
                     if let Some(state) = match &self.ui_state {
