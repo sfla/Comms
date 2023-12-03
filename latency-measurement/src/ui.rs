@@ -392,7 +392,7 @@ fn main() {
         ui_audio::run(audio_tx, command_rx);
     });
     let native_options = eframe::NativeOptions {
-        initial_window_size: Some(egui::Vec2::new(500.0, 270.0)),
+        viewport: egui::ViewportBuilder::default().with_inner_size([500.0, 270.0]),
         ..Default::default()
     };
     eframe::run_native(
