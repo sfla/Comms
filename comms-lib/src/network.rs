@@ -29,7 +29,7 @@ pub struct TcpConnection {
 
 impl TcpConnection {
     pub fn new(stream: TcpStream) -> (Self, Option<io::Error>) {
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(debug_assertions)))]
         let error = {
             use std::os::fd::AsRawFd;
             use std::os::fd::BorrowedFd;
@@ -41,7 +41,7 @@ impl TcpConnection {
                 .set_tcp_user_timeout(Some(Duration::from_secs(6)))
                 .err()
         };
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(any(not(target_os = "linux"), debug_assertions))]
         let error: Option<io::Error> = None;
         (
             Self {
