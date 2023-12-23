@@ -13,24 +13,22 @@
 
 ## Latency benchmarks
 
-Round-trip audio latency, as casually measured from residential internet:
+Round-trip audio latency between two Windows devices on the same local network:
 
 ```
-[From ~Toronto]
+[From ~Stockholm SE]
 +-----------------------------+-------+
-| Comms (Local Network)       | 66ms  |
+| Comms (Local Network)       | 29ms  |
 +-----------------------------+-------+
-| TeamSpeak 3 (Local Network) | 99ms  |
+| Zoom ("studio mode")        | 70ms  |
 +-----------------------------+-------+
-| Discord (<closest>)         | 207ms |
+| TeamSpeak 3 (Local Network) | 109ms |
 +-----------------------------+-------+
-|                             |       |
+| Google Meet (Chrome)        | 159ms |
 +-----------------------------+-------+
-| Comms (West Coast NA)       | 121ms |
+| Discord (Spånga, 1ms away)  | 176ms |
 +-----------------------------+-------+
-| TeamSpeak 3 (West Coast NA) | 179ms |
-+-----------------------------+-------+
-| Discord (West Coast NA)     | 248ms |
+| Google Meet (Firefox)       | 232ms |
 +-----------------------------+-------+
 ```
 
