@@ -40,10 +40,10 @@ impl MicSink for Mic {
         }
 
         while self.pcm_samples_end < self.pcm_samples_start
-            || self.pcm_samples_end - self.pcm_samples_start >= 480
+            || self.pcm_samples_end - self.pcm_samples_start >= 120
         {
             let pcm_buffer =
-                &self.pcm_samples[self.pcm_samples_start..self.pcm_samples_start + 480];
+                &self.pcm_samples[self.pcm_samples_start..self.pcm_samples_start + 120];
             let mut opus_buffer = [0u8; 2048];
             let size = self
                 .encoder
@@ -53,7 +53,7 @@ impl MicSink for Mic {
             if !self.user_has_pressed() {
                 self.sender.send(opus_bytes).unwrap();
             }
-            self.pcm_samples_start = (self.pcm_samples_start + 480) % BUFFER_SIZE;
+            self.pcm_samples_start = (self.pcm_samples_start + 120) % BUFFER_SIZE;
         }
     }
 }
@@ -75,7 +75,7 @@ impl PlaybackSource for Playback {
         } else {
             match self.receiver.try_recv() {
                 Ok(opus_bytes) => {
-                    let mut decode_buffer = [0f32; 480];
+                    let mut decode_buffer = [0f32; 120];
                     let size = self
                         .decoder
                         .decode_float(Some(&opus_bytes), &mut decode_buffer as &mut [f32], false)
@@ -89,7 +89,7 @@ impl PlaybackSource for Playback {
                     decode_buffer[0]
                 }
                 Err(TryRecvError::Empty) => {
-                    let mut decode_buffer = [0f32; 480];
+                    let mut decode_buffer = [0f32; 120];
                     let size = self
                         .decoder
                         .decode_float(

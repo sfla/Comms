@@ -11,11 +11,11 @@ path = "src/loopback.rs"
 #[[bin]]
 #name = "noise-gate"
 #path = "src/noise_gate.rs"
-#
-#[[bin]]
-#name = "opus"
-#path = "src/opus.rs"
-#
+
+[[bin]]
+name = "opus"
+path = "src/opus.rs"
+
 #[[bin]]
 #name = "opus_drop_packets"
 #path = "src/opus_drop_packets.rs"

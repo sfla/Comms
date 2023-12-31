@@ -91,7 +91,7 @@ impl Multiplexer {
         // of packets), then throw it away without processing it through opus.
         // (By avoiding processing it through opus, we allow opus to "bridge the wave" for the
         // next packet that _can_ fit).
-        if queue.sample_buffer_offset + 480 < BUFFER_SIZE {
+        if queue.sample_buffer_offset + 120 < BUFFER_SIZE {
             let number_of_samples = decode_opus_frame(
                 Some(&data.bytes),
                 queue,
@@ -103,7 +103,7 @@ impl Multiplexer {
                 .try_send(UICommand::UserIsSpeaking {
                     client_id: id,
                     duration: Duration::from_millis(
-                        (number_of_samples as f64 / 48.0).round() as u64
+                        (number_of_samples as f64 / 12.0).round() as u64
                     ),
                 })
                 .unwrap();
@@ -283,10 +283,10 @@ impl MicSink for MicBuffer {
 
     fn publish_chunks(&mut self) {
         while self.sample_buffer_end < self.sample_buffer_start
-            || self.sample_buffer_end - self.sample_buffer_start >= 480
+            || self.sample_buffer_end - self.sample_buffer_start >= 120
         {
             let next_samples =
-                &mut self.sample_buffer[self.sample_buffer_start..self.sample_buffer_start + 480];
+                &mut self.sample_buffer[self.sample_buffer_start..self.sample_buffer_start + 120];
             let state_change = self.noise_gate.update_window(next_samples);
             match state_change {
                 ChangedState::OPEN => self
@@ -305,7 +305,7 @@ impl MicSink for MicBuffer {
             }
 
             if next_samples.iter().any(|s| *s != f32::EQUILIBRIUM) {
-                let mut encode_buffer = [0u8; 480];
+                let mut encode_buffer = [0u8; 120];
                 let size = self
                     .encoder
                     .encode_float(next_samples, &mut encode_buffer)
@@ -321,7 +321,7 @@ impl MicSink for MicBuffer {
                 self.index += 1;
             }
 
-            self.sample_buffer_start = (self.sample_buffer_start + 480) % BUFFER_SIZE;
+            self.sample_buffer_start = (self.sample_buffer_start + 120) % BUFFER_SIZE;
         }
     }
 }
@@ -333,7 +333,7 @@ fn decode_opus_frame(
     sample_buffer: &mut Box<[f32; BUFFER_SIZE]>,
     main_volume: f32,
 ) -> usize {
-    let mut decode_buffer = [0f32; 480];
+    let mut decode_buffer = [0f32; 120];
     let number_of_decoded_samples = queue
         .decoder
         .decode_float(opus_bytes, &mut decode_buffer as &mut [f32], false)

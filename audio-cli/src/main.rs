@@ -289,9 +289,9 @@ fn main() -> Result<(), AudioCliError> {
                 let ms = diff.as_millis();
                 let samples_since_start_count = ms * 48;
 
-                while samples_since_start_count - sample_count >= 480 {
-                    sample_count += 480;
-                    let mut chunk = [0f32; 480];
+                while samples_since_start_count - sample_count >= 120 {
+                    sample_count += 120;
+                    let mut chunk = [0f32; 120];
                     for sample in chunk.iter_mut() {
                         *sample = next_value()
                     }
@@ -321,9 +321,9 @@ fn main() -> Result<(), AudioCliError> {
             let ms = diff.as_millis();
             let samples_since_start_count = ms * 48;
 
-            while samples_since_start_count - sample_count >= 480 {
-                sample_count += 480;
-                let mut chunk = [0f32; 480];
+            while samples_since_start_count - sample_count >= 120 {
+                sample_count += 120;
+                let mut chunk = [0f32; 120];
                 for sample in chunk.iter_mut() {
                     *sample = next_value()
                 }

@@ -18,7 +18,7 @@ Round-trip audio latency between two Windows devices on the same local network:
 ```
 [From ~Stockholm SE]
 +-----------------------------+-------+
-| Comms (Local Network)       | 29ms  |
+| Comms (Local Network)       | 27ms  |
 +-----------------------------+-------+
 | Zoom ("studio mode")        | 70ms  |
 +-----------------------------+-------+
