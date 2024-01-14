@@ -100,3 +100,21 @@ deploy_release:
   dependencies:
     - build_release_linux
   environment: Linux
+
+deploy_release_bob:
+  stage: deploy_release
+  only:
+    - main
+  script:
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | ssh-add -
+    - sftp comms-ci@bob.getcomms.app:/opt/comms-ci/artifacts <<< $'put target/release/comms-server'
+    - |-
+      ssh -T comms-ci@bob.getcomms.app <<EOD
+      set -ex
+      sudo /bin/systemctl restart comms.service
+      EOD
+    - ssh-agent -k
+  dependencies:
+    - build_release_linux
+  environment: Bob
