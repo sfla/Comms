@@ -1,8 +1,8 @@
 [package]
 name = "loopback-cli"
-version = "0.1.0"
-authors = ["Mitchell Hentges <mitch9654@gmail.com>"]
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [[bin]]
 name = "loopback"

@@ -12,6 +12,11 @@ members = [
     "loopback-cli",
 ]
 
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["Mitchell Hentges <mitch9654@gmail.com>"]
+
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 
