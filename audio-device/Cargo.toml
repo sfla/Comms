@@ -8,7 +8,7 @@ edition = "2021"
 comms-lib = { path = "../comms-lib" }
 dasp = { version = "0.11.0", features = ["interpolate", "interpolate-linear"] }
 ringbuffer = "0.15"
-audio_thread_priority = "0.30"
+audio_thread_priority = "0.31"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 lazy_static = "1.4"
