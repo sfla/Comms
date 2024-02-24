@@ -410,26 +410,24 @@ pub fn handle_tcp_stream(
     };
 
     let reply_map = &mut connection.reply_map;
+    let handle_packet = |packet: IncomingPacketFrameRef| {
+        let context = Context {
+            client_id,
+            clients: clients_arc.clone(),
+            network_handle: network_handle.clone(),
+        };
 
-    match connection
-        .tcp
-        .read_new_packets()
-        .try_process(move |packet| {
-            let context = Context {
-                client_id,
-                clients: clients_arc.clone(),
-                network_handle: network_handle.clone(),
-            };
-
-            if let Some(reply_to) = packet.header.reply_to {
-                if let Some(send_response) = reply_map.remove(&reply_to) {
-                    send_response.done(IncomingPacketFrame::from(packet));
-                    return Ok(());
-                }
+        if let Some(reply_to) = packet.header.reply_to {
+            if let Some(send_response) = reply_map.remove(&reply_to) {
+                send_response.done(IncomingPacketFrame::from(packet));
+                return Ok(());
             }
+        }
 
-            tcp_packet_to_endpoint(spawner.clone(), context, packet)
-        }) {
+        tcp_packet_to_endpoint(spawner.clone(), context, packet)
+    };
+
+    match connection.tcp.read_new_packets().try_process(handle_packet) {
         Err(CommsNetworkError::Closed) => return Ok(StreamStatus::Closed),
         Err(_) => return Err(HandlePacketError::CommunicationFailure),
         _ => {}

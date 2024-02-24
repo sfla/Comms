@@ -103,17 +103,9 @@ pub async fn check_for_updates(
                 .into_json::<serde_json::Value>()?;
 
             let json = match json.as_array()
-                .and_then(|vec| {
-                    for job in vec {
-                        if let Some(name) = job.get("name")
-                            .and_then(|n| n.as_str()) {
-                            if name == "build_release_windows" {
-                                return Some(job);
-                            }
-                        }
-                    }
-                    None
-                }) {
+                .and_then(|jobs| jobs.iter().find(|job| {
+                    job.get("name").and_then(|n| n.as_str()) == Some("build_release_windows")
+                })) {
                 Some(j) => j,
                 None => return Err(CheckForUpdateError::Parse),
             };

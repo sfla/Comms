@@ -45,7 +45,7 @@ Round-trip audio latency between two Windows devices on the same local network:
 3. Install GTK4 and libadwaita using [`gvsbuild`](https://github.com/wingtk/gvsbuild)
    1. Follow [the "Development Environment" instructions (install git, MSYS2, Python, etc)](https://github.com/wingtk/gvsbuild#development-environment)
    2. In [the "Build GTK" step](https://github.com/wingtk/gvsbuild#build-gtk), just do `gvsbuild build gtk4 adwaita-icon-theme libadwaita`
-   3The final step you need to follow is ["Add GTK to Your Environmental Variables"](https://github.com/wingtk/gvsbuild#add-gtk-to-your-environmental-variables)
+   3. The final step you need to follow is ["Add GTK to Your Environmental Variables"](https://github.com/wingtk/gvsbuild#add-gtk-to-your-environmental-variables)
 4. From the `comms` repository, run `cargo run --bin comms`
 
 ### Windows _Faster_ Build Instructions
