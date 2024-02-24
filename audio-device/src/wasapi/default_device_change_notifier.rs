@@ -1,6 +1,7 @@
 use crate::wasapi::com;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::HANDLE;
+use windows::Win32::Media::Audio;
 use windows::Win32::Media::Audio::{
     EDataFlow, ERole, IMMNotificationClient, IMMNotificationClient_Impl,
 };
@@ -27,7 +28,11 @@ impl CommsImmNotificationClient {
 }
 
 impl IMMNotificationClient_Impl for CommsImmNotificationClient {
-    fn OnDeviceStateChanged(&self, _: &PCWSTR, _: u32) -> windows::core::Result<()> {
+    fn OnDeviceStateChanged(
+        &self,
+        _: &PCWSTR,
+        _: Audio::DEVICE_STATE,
+    ) -> windows::core::Result<()> {
         Ok(())
     }
 

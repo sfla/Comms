@@ -1,3 +1,12 @@
+use std::ops::Deref;
+
+use windows::Win32::Devices::Properties;
+use windows::Win32::Foundation;
+use windows::Win32::Foundation::WIN32_ERROR;
+use windows::Win32::Media::Audio;
+use windows::Win32::System::Com::StructuredStorage;
+use windows::Win32::System::{Com, Threading};
+
 use crate::buffer::{MicSink, PlaybackSource};
 use crate::wasapi::audio_connection::WasapiCreationError;
 use crate::wasapi::com;
@@ -11,18 +20,6 @@ use crate::wasapi::sample_rate_conversion::{
     create_mic_sample_rate_converter, create_playback_sample_rate_converter,
 };
 use crate::wasapi::stream::{Format, RawWasapiStream, WasapiMicStream, WasapiPlaybackStream};
-use std::ffi::OsString;
-use std::ops::Deref;
-use std::os::windows::ffi::OsStringExt;
-use std::slice;
-use windows::core::ComInterface;
-use windows::Win32::Devices::Properties;
-use windows::Win32::Foundation;
-use windows::Win32::Foundation::WIN32_ERROR;
-use windows::Win32::Media::Audio;
-use windows::Win32::System::Com::StructuredStorage;
-use windows::Win32::System::Variant::VT_LPWSTR;
-use windows::Win32::System::{Com, Threading};
 
 pub struct InputDevice {
     device: IMMDeviceWrapper,
@@ -141,7 +138,7 @@ impl IAudioClientWrapper {
         Ok(WasapiEventLoopRegistration { win_handle: event })
     }
 
-    fn create_client<T: ComInterface>(&self) -> Result<T, BuildStreamError> {
+    fn create_client<T: windows_core::Interface>(&self) -> Result<T, BuildStreamError> {
         match unsafe { self.0.GetService() } {
             Err(ref e) if e.code() == Audio::AUDCLNT_E_DEVICE_INVALIDATED => {
                 Err(BuildStreamError::DeviceNotAvailable)
@@ -220,25 +217,7 @@ impl IMMDeviceWrapper {
             }
         };
 
-        if unsafe { property_value.Anonymous.Anonymous.vt } != VT_LPWSTR {
-            let description = format!("property store produced invalid data: {:?}", unsafe {
-                property_value.Anonymous.Anonymous.vt
-            });
-            return Err(DeviceNameError { description });
-        }
-        let ptr_usize: usize =
-            unsafe { *(&property_value.Anonymous.Anonymous.Anonymous as *const _ as *const usize) };
-        let ptr_utf16 = ptr_usize as *const u16;
-
-        let mut len = 0;
-        while unsafe { *ptr_utf16.offset(len) } != 0 {
-            len += 1;
-        }
-
-        let name_slice = unsafe { slice::from_raw_parts(ptr_utf16, len as usize) };
-        let name_os_string: OsString = OsStringExt::from_wide(name_slice);
-        let name_string = name_os_string.to_string_lossy().into();
-
+        let name_string = property_value.to_string();
         unsafe { StructuredStorage::PropVariantClear(&mut property_value) }.unwrap();
         Ok(name_string)
     }
