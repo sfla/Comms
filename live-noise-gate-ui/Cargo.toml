@@ -8,7 +8,7 @@ edition.workspace = true
 audio-device = { path = "../audio-device" }
 comms-lib = { path = "../comms-lib" }
 dasp = "0.11.0"
-eframe = "0.26"
-egui_plot = "0.26"
+eframe = "0.27"
+egui_plot = "0.27"
 ringbuffer = "0.15"
 rfd = "0.14"
