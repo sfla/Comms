@@ -1395,7 +1395,7 @@ pub fn run(
                     let surface = native.surface().unwrap();
                     let surface: Win32Surface = surface.downcast().unwrap();
                     let app_window: HWND = HWND(surface.handle().0);
-                    unsafe { ShowWindow(app_window, SW_SHOWMINNOACTIVE) }.unwrap();
+                    let _ = unsafe { ShowWindow(app_window, SW_SHOWMINNOACTIVE) };
 
                     unsafe {
                         SendMessageW(HWND(warp_window), WM_CLOSE, WPARAM(0), LPARAM(0));
