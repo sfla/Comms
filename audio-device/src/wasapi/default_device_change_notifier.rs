@@ -10,7 +10,7 @@ use windows::Win32::System::Threading;
 #[windows::core::implement(IMMNotificationClient)]
 pub struct CommsImmNotificationClient(HANDLE);
 
-pub struct DefaultDeviceChangeHandle(pub HANDLE, IMMNotificationClient);
+pub struct DefaultDeviceChangeHandle(pub HANDLE, #[allow(dead_code)] IMMNotificationClient);
 
 impl CommsImmNotificationClient {
     pub fn listen_for_default_device_changes() -> DefaultDeviceChangeHandle {

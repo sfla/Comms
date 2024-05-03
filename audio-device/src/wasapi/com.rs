@@ -1,4 +1,3 @@
-use std::ptr;
 use windows::Win32::Media::Audio;
 use windows::Win32::System::Com;
 
@@ -25,11 +24,11 @@ unsafe impl Sync for Enumerator {}
 thread_local!(static COM_INITIALIZED: ComInitialized = {
     unsafe {
         Com::CoInitializeEx(None, Com::COINIT_MULTITHREADED).unwrap();
-        ComInitialized(ptr::null_mut())
+        ComInitialized
     }
 });
 
-pub struct ComInitialized(*mut ());
+pub struct ComInitialized;
 
 impl Drop for ComInitialized {
     fn drop(&mut self) {

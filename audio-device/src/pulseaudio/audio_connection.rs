@@ -5,7 +5,6 @@ use crate::pulseaudio::event_loop::PulseEventLoopBuilder;
 use libpulse_binding::callbacks::ListResult;
 use libpulse_binding::context;
 use libpulse_binding::context::Context;
-use libpulse_binding::error::PAErr;
 use libpulse_binding::mainloop::standard::{IterateResult, Mainloop};
 use std::cell::RefCell;
 use std::error::Error;
@@ -136,7 +135,7 @@ impl AudioConnection for PulseAudioConnection {
 
 #[derive(Debug)]
 enum WaitError {
-    Failed(Option<PAErr>),
+    Failed,
     Cancelled,
 }
 
@@ -145,7 +144,7 @@ impl Error for WaitError {}
 impl fmt::Display for WaitError {
     fn fmt(&self, f: &mut Formatter) -> Result<(), ::std::fmt::Error> {
         match *self {
-            WaitError::Failed(_) => f.write_str("Failed"),
+            WaitError::Failed => f.write_str("Failed"),
             WaitError::Cancelled => f.write_str("Cancelled"),
         }
     }
@@ -162,8 +161,8 @@ impl WaitableOperation for Context {
                 IterateResult::Quit(_) => {
                     return Err(WaitError::Cancelled);
                 }
-                IterateResult::Err(err) => {
-                    return Err(WaitError::Failed(Some(err)));
+                IterateResult::Err(_) => {
+                    return Err(WaitError::Failed);
                 }
                 IterateResult::Success(_) => {}
             };
@@ -172,7 +171,7 @@ impl WaitableOperation for Context {
                     break;
                 }
                 context::State::Failed | context::State::Terminated => {
-                    return Err(WaitError::Failed(None));
+                    return Err(WaitError::Failed);
                 }
                 _ => {}
             }

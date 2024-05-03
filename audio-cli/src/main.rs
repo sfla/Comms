@@ -349,14 +349,14 @@ fn main() -> Result<(), AudioCliError> {
 #[derive(Debug)]
 enum AudioCliError {
     Usage,
-    Io(io::Error),
+    Io,
     Serialize,
     Opus,
 }
 
 impl From<io::Error> for AudioCliError {
-    fn from(e: io::Error) -> Self {
-        AudioCliError::Io(e)
+    fn from(_: io::Error) -> Self {
+        AudioCliError::Io
     }
 }
 

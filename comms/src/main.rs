@@ -13,7 +13,7 @@ use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
 use crate::audio::ipc::AudioHandle;
 use crate::audio::{AudioPlatform, AudioPlatformImpl};
 use crate::network::ipc::NetworkHandle;
-use crate::network::{NetworkError, SendToNetworkThreadError, Worker};
+use crate::network::{NetworkError, Worker};
 use crate::ui::comms_version;
 
 mod audio;
@@ -133,28 +133,4 @@ fn main() {
         ui_receiver,
         audio_handle,
     );
-}
-
-#[derive(Debug)]
-enum CommsError {
-    Audio(audio::AudioError),
-    Network(network::NetworkError),
-}
-
-impl From<audio::AudioError> for CommsError {
-    fn from(e: audio::AudioError) -> Self {
-        CommsError::Audio(e)
-    }
-}
-
-impl From<network::NetworkError> for CommsError {
-    fn from(e: network::NetworkError) -> Self {
-        CommsError::Network(e)
-    }
-}
-
-impl From<SendToNetworkThreadError> for CommsError {
-    fn from(e: SendToNetworkThreadError) -> Self {
-        CommsError::Audio(e.into())
-    }
 }
