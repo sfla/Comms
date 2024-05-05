@@ -26,6 +26,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 Pop-Location
 
+if ($cargo_profile -eq "dev") {
+   $cargo_profile = "debug"
+}
+
 $comms_path = Join-Path -Path $repo_dir -ChildPath "target\$cargo_profile\comms.exe"
 if (-not (Test-Path -Path $comms_path)) {
     echo "$comms_path does not exist"
