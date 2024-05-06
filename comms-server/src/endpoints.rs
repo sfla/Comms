@@ -207,24 +207,32 @@ async fn sent_wrong_packet(context: Context, packet_id: PacketId) -> FutureResul
 }
 
 pub async fn close_connection(context: Context, reason: CloseConnectionReason) -> FutureResult {
-    {
+    if let Some((name, addr)) = {
         let clients = context.clients.borrow_mut();
-        if let Some((name, addr)) = clients
-            .connecting
+        clients
+            .established
             .get(&context.client_id)
-            .map(|c| ("<unknown>".to_string(), c.connection.tcp.peer_addr()))
-            .or_else(|| {
-                clients
-                    .established
-                    .get(&context.client_id)
-                    .map(|c| (c.username.clone(), c.connection.tcp.peer_addr()))
-            })
-        {
-            println!(
-                "[{:?}] \"{}\" has disconnected due to {:?}",
-                &addr, &name, &reason
-            );
-        }
+            .map(|c| (c.username.clone(), c.connection.tcp.peer_addr().ok()))
+    } {
+        println!(
+            "[{:?}] \"{}\" has disconnected due to {:?}",
+            &addr, &name, &reason
+        );
+
+        let remaining_client_ids = {
+            let mut clients = context.clients.borrow_mut();
+            clients.remove_client(&context.client_id);
+            clients.established.keys().copied().collect()
+        };
+
+        let outgoing = SendPacket::tcp(
+            Target::Many(remaining_client_ids),
+            None,
+            UserLeft {
+                client_id: context.client_id,
+            },
+        )?;
+        outgoing.send(&context.network_handle).await;
     }
 
     if reason == CloseConnectionReason::MalformedData {
@@ -238,20 +246,6 @@ pub async fn close_connection(context: Context, reason: CloseConnectionReason) -
         outgoing.send(&context.network_handle).await;
     }
 
-    let remaining_client_ids = {
-        let mut clients = context.clients.borrow_mut();
-        clients.remove_client(&context.client_id);
-        clients.established.keys().copied().collect()
-    };
-
-    let outgoing = SendPacket::tcp(
-        Target::Many(remaining_client_ids),
-        None,
-        UserLeft {
-            client_id: context.client_id,
-        },
-    )?;
-    outgoing.send(&context.network_handle).await;
     Ok(())
 }
 
