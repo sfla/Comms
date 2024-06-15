@@ -6,6 +6,7 @@ use windows::Win32::Foundation::WIN32_ERROR;
 use windows::Win32::Media::Audio;
 use windows::Win32::System::Com::StructuredStorage;
 use windows::Win32::System::{Com, Threading};
+use windows::Win32::UI::Shell::PropertiesSystem;
 
 use crate::buffer::{MicSink, PlaybackSource};
 use crate::wasapi::audio_connection::WasapiCreationError;
@@ -206,9 +207,10 @@ impl IMMDeviceWrapper {
         let property_store = unsafe { self.0.OpenPropertyStore(Com::STGM_READ) }.unwrap();
 
         let mut property_value = match unsafe {
-            property_store.GetValue(&std::mem::transmute(
-                Properties::DEVPKEY_Device_FriendlyName,
-            ))
+            property_store.GetValue(&std::mem::transmute::<
+                Properties::DEVPROPKEY,
+                PropertiesSystem::PROPERTYKEY,
+            >(Properties::DEVPKEY_Device_FriendlyName))
         } {
             Ok(property_value) => property_value,
             Err(err) => {

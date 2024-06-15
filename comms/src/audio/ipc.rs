@@ -150,8 +150,8 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
                     connection.list_devices(move |devices| {
                         ui_handle
                             .try_send(UICommand::DevicesFound {
-                                input_devices: devices.input_devices,
-                                output_devices: devices.output_devices,
+                                _input_devices: devices.input_devices,
+                                _output_devices: devices.output_devices,
                             })
                             .unwrap();
                     });

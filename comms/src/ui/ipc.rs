@@ -11,8 +11,8 @@ pub enum AudioIPCInitStatus {
 pub enum UICommand {
     AudioIPCInitStatus(AudioIPCInitStatus),
     DevicesFound {
-        input_devices: Vec<DeviceInfo>,
-        output_devices: Vec<DeviceInfo>,
+        _input_devices: Vec<DeviceInfo>,
+        _output_devices: Vec<DeviceInfo>,
     },
     UserIsSpeaking {
         client_id: ClientId,
