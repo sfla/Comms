@@ -6,11 +6,11 @@ edition.workspace = true
 
 [dependencies]
 bincode = "1.2"
-mio = { version = "0.8", features = ["net", "os-poll"] }
+mio = { version = "1.0", features = ["net", "os-poll"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"
 thiserror = "1.0.23"
-uuid = { version = "1.1.1", features = ["v4", "fast-rng", "serde"]}
+uuid = { version = "1.1.1", features = ["v4", "fast-rng", "serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 socket2 = "0.5"

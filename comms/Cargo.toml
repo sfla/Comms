@@ -21,9 +21,9 @@ glib = "0.19"
 gtk = { version = "0.8", package = "gtk4", features = ["v4_6"] }
 include_dir = "0.7"
 lewton = "0.10.2"
-mio = { version = "0.8", features = ["net", "os-poll"] }
+mio = { version = "1.0", features = ["net", "os-poll"] }
 dasp = "0.11.0"
-sentry = { version = "0.32", features = ["debug-images"] }
+sentry = { version = "0.34", features = ["debug-images"] }
 serde = "1.0"
 serde_json = "1.0"
 ureq = { version = "2.5.0", features = ["json"] }
@@ -31,7 +31,7 @@ uuid = { version = "1.1.1", features = ["v4", "fast-rng"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 gdk4-win32 = "0.8"
-windows = { version = "0.56", features = [
+windows = { version = "0.57", features = [
     "implement",
     "Win32_Foundation",
     "Win32_Security",
