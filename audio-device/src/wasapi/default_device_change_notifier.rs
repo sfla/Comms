@@ -27,7 +27,7 @@ impl CommsImmNotificationClient {
     }
 }
 
-impl IMMNotificationClient_Impl for CommsImmNotificationClient {
+impl IMMNotificationClient_Impl for CommsImmNotificationClient_Impl {
     fn OnDeviceStateChanged(
         &self,
         _: &PCWSTR,

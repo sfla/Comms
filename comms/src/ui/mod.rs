@@ -1377,12 +1377,13 @@ pub fn run(
             .and_then(|h| h.to_str())
         {
             use gdk4_win32::Win32Surface;
+            use std::ffi::c_void;
             use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
             use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
             use windows::Win32::UI::WindowsAndMessaging::WM_CLOSE;
             use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMINNOACTIVE};
 
-            let warp_window = warp_window.parse().unwrap();
+            let warp_window: isize = warp_window.parse().unwrap();
             let handler_id = Rc::new(RefCell::new(None::<SignalHandlerId>));
             *handler_id.borrow_mut() = {
                 let handler_id = handler_id.clone();
@@ -1394,11 +1395,16 @@ pub fn run(
                     let native = window.native().unwrap();
                     let surface = native.surface().unwrap();
                     let surface: Win32Surface = surface.downcast().unwrap();
-                    let app_window: HWND = HWND(surface.handle().0);
+                    let app_window: HWND = HWND(surface.handle().0 as *mut c_void);
                     let _ = unsafe { ShowWindow(app_window, SW_SHOWMINNOACTIVE) };
 
                     unsafe {
-                        SendMessageW(HWND(warp_window), WM_CLOSE, WPARAM(0), LPARAM(0));
+                        SendMessageW(
+                            HWND(warp_window as *mut c_void),
+                            WM_CLOSE,
+                            WPARAM(0),
+                            LPARAM(0),
+                        );
                     };
 
                     window.show();

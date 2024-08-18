@@ -402,7 +402,7 @@ fn main() {
         "Latency Measurement UI",
         native_options,
         Box::new(|_| {
-            Box::new(App {
+            Ok(Box::new(App {
                 time_plot: TimePlot {
                     incoming_samples: Vec::new(),
                     outgoing_samples: Vec::new(),
@@ -411,7 +411,7 @@ fn main() {
                 ui_state: UiState::Initial,
                 audio_rx,
                 command_tx,
-            })
+            }))
         }),
     )
     .unwrap();

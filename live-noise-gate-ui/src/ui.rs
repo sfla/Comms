@@ -353,14 +353,14 @@ pub fn run(command_tx: Sender<Command>, time_plot_receiver: Receiver<IncomingAud
         "Live noise gate UI",
         native_options,
         Box::new(|_| {
-            Box::new(App {
+            Ok(Box::new(App {
                 time: AudioPlot::new(time_plot_receiver),
                 is_muted: false,
                 recording_path: None,
                 last_playback_recording: None,
                 playback_source_is_loopback: true,
                 command_tx,
-            })
+            }))
         }),
     )
     .unwrap();
