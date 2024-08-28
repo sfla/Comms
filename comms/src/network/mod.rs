@@ -15,7 +15,7 @@ use comms_lib::network::{
 };
 use comms_lib::packet::{
     AudioFromClient, AudioToClient, ClientId, Hello, KeepAlive, P2pAcknowledge, P2pAcknowledgeBack,
-    P2pSynchronize, Packet, PacketBody,
+    P2pSynchronize, Packet, PacketBody, RawAudio, RecordRawOneMinute,
 };
 use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame};
 
@@ -427,6 +427,46 @@ impl Worker {
                                                 }
                                                 Err(e) => return e.into(),
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                            NetworkCommand::SendRawAudio(chunk) => {
+                                if let Some(connection) = &mut self.connection {
+                                    let packet = OutgoingPacketFrame::from_packet(
+                                        None,
+                                        &RawAudio {
+                                            samples: chunk.samples.clone(),
+                                        },
+                                    )
+                                    .unwrap();
+
+                                    let id = connection.next_packet_id();
+                                    if let Ok(raw) = packet.into_raw(id) {
+                                        match connection.tcp.push_outgoing(&raw) {
+                                            Ok(_) => (),
+                                            Err(e)
+                                                if e.kind() == io::ErrorKind::ConnectionRefused => {
+                                            }
+                                            Err(e) => return e.into(),
+                                        }
+                                    }
+                                }
+                            }
+                            NetworkCommand::RequestRecordRawOneMinute => {
+                                if let Some(connection) = &mut self.connection {
+                                    let packet =
+                                        OutgoingPacketFrame::from_packet(None, &RecordRawOneMinute)
+                                            .unwrap();
+
+                                    let id = connection.next_packet_id();
+                                    if let Ok(raw) = packet.into_raw(id) {
+                                        match connection.tcp.push_outgoing(&raw) {
+                                            Ok(_) => (),
+                                            Err(e)
+                                                if e.kind() == io::ErrorKind::ConnectionRefused => {
+                                            }
+                                            Err(e) => return e.into(),
                                         }
                                     }
                                 }

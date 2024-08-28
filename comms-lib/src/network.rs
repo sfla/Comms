@@ -360,18 +360,19 @@ impl<'a> TcpReadIter<'a> {
                 return None;
             }
 
-            let header_result = if self.incoming_stream_end > self.incoming_stream_start {
-                let buffer = &self.incoming_stream
-                    [*self.incoming_stream_start..*self.incoming_stream_start + PACKET_HEADER_SIZE];
-                PacketHeader::from_bytes(buffer)
-            } else {
-                let slices = &mut [
-                    &self.incoming_stream[*self.incoming_stream_start..],
-                    &self.incoming_stream[..PACKET_HEADER_SIZE
-                        - (TCP_STREAM_BUFFER_SIZE - *self.incoming_stream_start)],
-                ];
-                PacketHeader::from_multiple_byte_slices(slices)
-            };
+            let header_result =
+                if TCP_STREAM_BUFFER_SIZE - *self.incoming_stream_start > PACKET_HEADER_SIZE {
+                    let buffer = &self.incoming_stream[*self.incoming_stream_start
+                        ..*self.incoming_stream_start + PACKET_HEADER_SIZE];
+                    PacketHeader::from_bytes(buffer)
+                } else {
+                    let slices = &mut [
+                        &self.incoming_stream[*self.incoming_stream_start..],
+                        &self.incoming_stream[..PACKET_HEADER_SIZE
+                            - (TCP_STREAM_BUFFER_SIZE - *self.incoming_stream_start)],
+                    ];
+                    PacketHeader::from_multiple_byte_slices(slices)
+                };
 
             let header = match header_result {
                 Ok(header) => header,

@@ -10,6 +10,7 @@ use crate::network::SendToNetworkThreadError;
 use crate::ui::ipc::{AudioIPCInitStatus, UICommand};
 use audio_device::audio_connection::EventLoop;
 use std::fmt::{Display, Formatter};
+use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 
 #[cfg(windows)]
@@ -30,14 +31,16 @@ pub fn run(
     receiver: Receiver<AudioCommand>,
 ) -> AudioError {
     let multiplexer = RcMultiplexer::new();
+    let (tx, rx) = mpsc::channel();
     let receiver = AudioReceiver::new(
         multiplexer.clone(),
         registration,
         receiver,
         ui_handle.clone(),
         network_handle.clone(),
+        tx,
     );
-    let mic_buffer = match MicBuffer::new(network_handle, ui_handle.clone()) {
+    let mic_buffer = match MicBuffer::new(network_handle, ui_handle.clone(), rx) {
         Ok(b) => b,
         Err(e) => return e.into(),
     };

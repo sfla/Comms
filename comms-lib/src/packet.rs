@@ -198,3 +198,19 @@ pub struct Disconnect {
 impl PacketBody for Disconnect {
     const KIND_ID: PacketKind = 11u8;
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RecordRawOneMinute;
+
+impl PacketBody for RecordRawOneMinute {
+    const KIND_ID: PacketKind = 12u8;
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RawAudio {
+    pub samples: Vec<f32>,
+}
+
+impl PacketBody for RawAudio {
+    const KIND_ID: PacketKind = 13u8;
+}

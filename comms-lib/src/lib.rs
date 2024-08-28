@@ -14,6 +14,10 @@ pub struct OpusAudioFrame {
     pub bytes: Vec<u8>,
 }
 
+pub struct RawAudioFrame {
+    pub samples: Vec<f32>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PacketHeader {
     pub kind: PacketKind,

@@ -13,12 +13,13 @@ use futures_timer::Delay;
 use gio::prelude::*;
 use gio::ApplicationFlags;
 use glib::ControlFlow::{Break, Continue};
-use glib::{timeout_add_local, SignalHandlerId};
+use glib::{timeout_add_local, Propagation, SignalHandlerId};
 use gtk::gdk::Display;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{
-    gdk, DialogFlags, Orientation, PositionType, ResponseType, RevealerTransitionType, StyleContext,
+    gdk, CallbackAction, DialogFlags, Orientation, PositionType, ResponseType,
+    RevealerTransitionType, Shortcut, ShortcutController, ShortcutTrigger, StyleContext,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,7 +27,8 @@ use uuid::Uuid;
 use comms_lib::network::CommsNetworkError;
 use comms_lib::packet;
 use comms_lib::packet::{
-    ClientId, ErrorResponse, NetworkUser, Packet, PacketBody, UserId, UserJoined, UserLeft,
+    ClientId, ErrorResponse, NetworkUser, Packet, PacketBody, RecordRawOneMinute, UserId,
+    UserJoined, UserLeft,
 };
 
 use crate::audio::ipc::{AudioCommand, AudioHandle, EventLoopCreationError};
@@ -918,6 +920,9 @@ async fn handle_network_events(
                             user_list.remove(&user.borrow().root_widget.parent().unwrap());
                             audio.send(AudioCommand::UserLeft).unwrap();
                         }
+                        RecordRawOneMinute::KIND_ID => {
+                            audio.send(AudioCommand::RecordRawOneMinute).unwrap();
+                        }
                         ErrorResponse::KIND_ID => {
                             let packet: Packet<ErrorResponse> = packet.finish_parse()?;
                             let Some((users, user_list, user_id, saved_volumes, username, server)) =
@@ -1328,44 +1333,67 @@ pub fn run(
         stack.add_named(&connect_form, Some("connect"));
 
         // --- Setup for main state
-        disconnect_button.connect_clicked(move |_| {
-            let ui = ui.clone();
+        {
             let network = network.clone();
-            let audio = audio.clone();
-            glib_context.spawn_local(async move {
-                let (users, user_list, user_id, saved_volumes) =
-                    match ui.borrow_mut().use_state(|state| {
-                        if let UiState::Main {
-                            users,
-                            user_list,
-                            user_id,
-                            saved_volumes,
-                            ..
-                        } = state
-                        {
-                            (
-                                UiState::Disconnecting,
-                                Some((users, user_list, user_id, saved_volumes)),
-                            )
-                        } else {
-                            (state, None)
-                        }
-                    }) {
-                        Some(m) => m,
-                        None => return,
-                    };
+            disconnect_button.connect_clicked(move |_| {
+                let ui = ui.clone();
+                let network = network.clone();
+                let audio = audio.clone();
+                glib_context.spawn_local(async move {
+                    let (users, user_list, user_id, saved_volumes) =
+                        match ui.borrow_mut().use_state(|state| {
+                            if let UiState::Main {
+                                users,
+                                user_list,
+                                user_id,
+                                saved_volumes,
+                                ..
+                            } = state
+                            {
+                                (
+                                    UiState::Disconnecting,
+                                    Some((users, user_list, user_id, saved_volumes)),
+                                )
+                            } else {
+                                (state, None)
+                            }
+                        }) {
+                            Some(m) => m,
+                            None => return,
+                        };
 
-                disconnect_from_server(users, user_list, ui.clone(), network, audio).await;
+                    disconnect_from_server(users, user_list, ui.clone(), network, audio).await;
 
-                ui.borrow_mut().set_state(UiState::ChooseServer {
-                    user_id,
-                    saved_volumes,
+                    ui.borrow_mut().set_state(UiState::ChooseServer {
+                        user_id,
+                        saved_volumes,
+                    });
                 });
             });
-        });
+        }
 
         let user_list_root: gtk::ScrolledWindow = builder.object("user_list_root").unwrap();
         stack.add_named(&user_list_root, Some("user_list"));
+
+        // Create a ShortcutController
+        let controller = ShortcutController::new();
+
+        // Connect the trigger to the action defined in the action group
+        let action = {
+            let network = network.clone();
+            CallbackAction::new(move |_, _| {
+                network.command(NetworkCommand::RequestRecordRawOneMinute);
+                Propagation::Stop
+            })
+        };
+
+        controller.add_shortcut(Shortcut::new(
+            Some(ShortcutTrigger::parse_string("<Control><Alt><Shift>R").unwrap()),
+            Some(action),
+        ));
+
+        // Add the controller to the window
+        window.add_controller(controller);
 
         window.set_child(Some(&stack));
         #[cfg(not(windows))]

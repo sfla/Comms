@@ -1,18 +1,18 @@
 use std::sync::mpsc::{Receiver, SendError, Sender};
 
+use crate::audio::buffer::RcMultiplexer;
+use crate::audio::{AudioPlatform, AudioPlatformImpl};
 use crate::ui::ipc::UICommand;
+use crate::{NetworkHandle, RESOURCES_DIR};
+use audio_device::audio_connection::{AudioConnection, EventLoopNotify};
+use audio_device::buffer::{InterruptReceiver, MaybeSharedPlaybackSource};
 use comms_lib::packet::{AudioIndex, ClientId};
+use comms_lib::OpusAudioFrame;
 use lewton::inside_ogg::OggStreamReader;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::io::Cursor;
-
-use crate::audio::buffer::RcMultiplexer;
-use crate::audio::{AudioPlatform, AudioPlatformImpl};
-use crate::{NetworkHandle, RESOURCES_DIR};
-use audio_device::audio_connection::{AudioConnection, EventLoopNotify};
-use audio_device::buffer::{InterruptReceiver, MaybeSharedPlaybackSource};
-use comms_lib::OpusAudioFrame;
+use std::time::{Duration, Instant};
 
 #[cfg_attr(unix, allow(dead_code))]
 #[derive(Debug)]
@@ -32,6 +32,7 @@ pub enum AudioCommand {
     UserJoined,
     UserLeft,
     ServerConnect,
+    RecordRawOneMinute,
 }
 
 impl Display for AudioCommand {
@@ -47,6 +48,7 @@ impl Display for AudioCommand {
             AudioCommand::UserJoined => f.write_str("UserJoined"),
             AudioCommand::UserLeft => f.write_str("UserLeft"),
             AudioCommand::ServerConnect => f.write_str("ServerConnect"),
+            AudioCommand::RecordRawOneMinute => f.write_str("RecordRawOneMinute"),
         }
     }
 }
@@ -86,6 +88,7 @@ pub struct AudioReceiver<R> {
     pub(crate) command_rx: Receiver<AudioCommand>,
     pub(crate) ui_handle: async_channel::Sender<UICommand>,
     pub(crate) network_handle: NetworkHandle,
+    pub(crate) record_raw_until_sender: Sender<Instant>,
 }
 
 impl<R> AudioReceiver<R> {
@@ -95,6 +98,7 @@ impl<R> AudioReceiver<R> {
         command_rx: Receiver<AudioCommand>,
         ui_handle: async_channel::Sender<UICommand>,
         network_handle: NetworkHandle,
+        record_raw_until_sender: Sender<Instant>,
     ) -> Self {
         Self {
             multiplexer,
@@ -102,6 +106,7 @@ impl<R> AudioReceiver<R> {
             command_rx,
             ui_handle,
             network_handle,
+            record_raw_until_sender,
         }
     }
 }
@@ -193,6 +198,10 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
                     self.multiplexer
                         .with(|multiplexer| multiplexer.play_sound_effect(ogg_reader))
                 }
+                AudioCommand::RecordRawOneMinute => self
+                    .record_raw_until_sender
+                    .send(Instant::now() + Duration::from_secs(60))
+                    .unwrap(),
             }
         }
     }

@@ -87,19 +87,18 @@ impl<'a> IncomingPacketFrameRef<'a> {
         {
             let buffer = &self.incoming_stream[*self.incoming_stream_start
                 ..*self.incoming_stream_start + self.header.body_len as usize];
-            *self.incoming_stream_start += self.header.body_len as usize;
             bincode::deserialize(buffer)?
         } else {
             let slices = &mut [
                 &self.incoming_stream[*self.incoming_stream_start..],
-                &self.incoming_stream
-                    [..self.header.body_len as usize - *self.incoming_stream_start],
+                &self.incoming_stream[..self.header.body_len as usize
+                    - (self.tcp_stream_max_size - *self.incoming_stream_start)],
             ];
-            *self.incoming_stream_start =
-                self.header.body_len as usize - *self.incoming_stream_start;
             bincode::deserialize_from(MultipleByteSlices(slices))?
         };
 
+        *self.incoming_stream_start = (*self.incoming_stream_start + self.header.body_len as usize)
+            % self.tcp_stream_max_size;
         Ok(Packet::new(self.header.id, self.header.reply_to, body))
     }
 }

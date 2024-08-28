@@ -69,10 +69,13 @@ pub struct Client {
     pub p2p_connections: Vec<ClientId>,
 }
 
+type NameAndSamples = (String, Vec<Vec<f32>>);
+
 #[derive(Default)]
 pub struct Clients {
     pub established: HashMap<ClientId, Client>,
     pub connecting: HashMap<ClientId, ConnectingClient>,
+    pub raw_recordings: Option<HashMap<ClientId, NameAndSamples>>,
 }
 
 pub enum AnyClientRef<'a> {

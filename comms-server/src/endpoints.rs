@@ -2,19 +2,25 @@ use crate::client::{Client, Clients, UdpAssociation};
 use crate::keep_alive;
 use crate::network::{NetworkHandle, SendPacket, Target};
 use crate::task::{FutureResult, Spawner};
+use async_std::fs::File;
+use async_std::io::WriteExt;
+use async_std::task::sleep;
+use chrono::{DateTime, Utc};
 use comms_lib::network::CommsNetworkError;
 use comms_lib::packet::{
     AssociateUdp, AssociateUdpAccepted, AudioFromClient, AudioToClient, ClientId, Disconnect,
     DisconnectReason, ErrorResponse, FinishConnect, FinishConnectAccepted, KeepAlive, NetworkUser,
-    P2pEstablished, Packet, PacketBody, PacketId, ProtocolVersion, UserJoined, UserLeft,
+    P2pEstablished, Packet, PacketBody, PacketId, ProtocolVersion, RawAudio, RecordRawOneMinute,
+    UserJoined, UserLeft,
 };
 use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, SerializeError};
 use futures::future;
 use std::cell::RefCell;
 use std::io;
 use std::net::SocketAddr;
+use std::path::Path;
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 
 pub struct Context {
     pub clients: Rc<RefCell<Clients>>,
@@ -196,6 +202,81 @@ async fn receive_disconnect_packet(context: Context, packet: Packet<Disconnect>)
     .await
 }
 
+async fn receive_record_raw_one_minute(
+    spawner: Rc<RefCell<Spawner>>,
+    context: Context,
+) -> FutureResult {
+    println!("Recording requested");
+
+    let other_clients: Vec<_> = context
+        .clients
+        .borrow()
+        .established
+        .keys()
+        .copied()
+        .collect();
+
+    {
+        let mut clients = context.clients.borrow_mut();
+        clients.raw_recordings = Some(
+            other_clients
+                .iter()
+                .filter_map(|id| {
+                    clients
+                        .established
+                        .get(id)
+                        .map(|c| (*id, (c.username.clone(), Vec::new())))
+                })
+                .collect(),
+        );
+    }
+
+    SendPacket::tcp(Target::Many(other_clients), None, RecordRawOneMinute)?
+        .send(&context.network_handle)
+        .await;
+
+    spawner.borrow().spawn(async move {
+        // Including latency, should be enough for all clients to send their 60 seconds of data.
+        sleep(Duration::from_secs(60)).await;
+
+        let Some(recordings) = context.clients.borrow_mut().raw_recordings.take() else {
+            return Ok(());
+        };
+
+        let now = SystemTime::now();
+        let datetime: DateTime<Utc> = now.into();
+
+        future::join_all(recordings.values().map(|(name, samples)| async move {
+            let filename = format!("{}-{}.dmp", datetime.format("%Y-%m-%d-%H.%M.%S"), name);
+            let bytes: Vec<u8> = samples
+                .iter()
+                .flatten()
+                .flat_map(|s| s.to_le_bytes())
+                .collect();
+            let path = Path::new(&filename);
+            let mut file = File::create(path).await.unwrap();
+            file.write_all(&bytes).await.unwrap();
+        }))
+        .await;
+        Ok(())
+    });
+
+    Ok(())
+}
+
+async fn receive_raw_audio(context: Context, packet: Packet<RawAudio>) -> FutureResult {
+    let mut clients = context.clients.borrow_mut();
+    let Some(raw_recordings) = clients.raw_recordings.as_mut() else {
+        return Ok(());
+    };
+
+    raw_recordings
+        .entry(context.client_id)
+        .and_modify(|(_, samples)| samples.push(packet.body.samples));
+
+    Ok(())
+}
+
 async fn sent_wrong_packet(context: Context, packet_id: PacketId) -> FutureResult {
     let outgoing = SendPacket::tcp(
         Target::One(context.client_id),
@@ -265,6 +346,12 @@ fn tcp_packet_to_endpoint(
         Disconnect::KIND_ID => spawner
             .borrow()
             .spawn(receive_disconnect_packet(context, packet.finish_parse()?)),
+        RecordRawOneMinute::KIND_ID => spawner
+            .borrow()
+            .spawn(receive_record_raw_one_minute(spawner.clone(), context)),
+        RawAudio::KIND_ID => spawner
+            .borrow()
+            .spawn(receive_raw_audio(context, packet.finish_parse()?)),
         KeepAlive::KIND_ID => (),
         _ => spawner
             .borrow()

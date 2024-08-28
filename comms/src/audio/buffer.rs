@@ -6,14 +6,15 @@ use audiopus::coder::{Decoder, Encoder};
 use audiopus::{Application, Channels};
 use comms_lib::packet::{AudioIndex, ClientId, P2pEstablished};
 use comms_lib::serialization::OutgoingPacketFrame;
-use comms_lib::OpusAudioFrame;
+use comms_lib::{OpusAudioFrame, RawAudioFrame};
 use dasp::Sample;
 use lewton::inside_ogg::OggStreamReader;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{Read, Seek};
 use std::rc::Rc;
-use std::time::Duration;
+use std::sync::mpsc::Receiver;
+use std::time::{Duration, Instant};
 
 const BUFFER_SIZE: usize = 4800;
 
@@ -251,12 +252,15 @@ pub struct MicBuffer {
     encoder: Encoder,
     noise_gate: GateNoiseFilter,
     index: u64,
+    record_raw_until_receiver: Receiver<Instant>,
+    record_raw_until: Option<Instant>,
 }
 
 impl MicBuffer {
     pub fn new(
         network_handle: NetworkHandle,
         ui_handle: async_channel::Sender<UICommand>,
+        record_raw_until_receiver: Receiver<Instant>,
     ) -> Result<Self, audiopus::Error> {
         Ok(Self {
             network_handle,
@@ -271,6 +275,8 @@ impl MicBuffer {
             )?,
             noise_gate: GateNoiseFilter::new(2048),
             index: 1,
+            record_raw_until: None,
+            record_raw_until_receiver,
         })
     }
 }
@@ -299,6 +305,20 @@ impl MicSink for MicBuffer {
                     .unwrap(),
                 _ => (),
             };
+
+            if let Ok(until) = self.record_raw_until_receiver.try_recv() {
+                self.record_raw_until = Some(until);
+            }
+
+            if let Some(until) = self.record_raw_until.as_mut() {
+                if &Instant::now() < until {
+                    self.network_handle
+                        .raw_audio(RawAudioFrame {
+                            samples: next_samples.to_vec(),
+                        })
+                        .unwrap();
+                }
+            }
 
             for sample in next_samples.iter_mut() {
                 *sample = self.noise_gate.process(*sample);

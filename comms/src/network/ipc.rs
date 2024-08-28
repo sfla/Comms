@@ -14,7 +14,7 @@ use crate::audio::ipc::AudioHandle;
 use crate::network::future::{RequestError, SendResponse};
 use crate::network::{NextPollToken, WorkerInit};
 use comms_lib::packet::{ClientId, Hello, P2pAcknowledge, Packet, ProtocolVersion};
-use comms_lib::OpusAudioFrame;
+use comms_lib::{OpusAudioFrame, RawAudioFrame};
 
 #[derive(Debug)]
 pub enum NetworkEvent {
@@ -75,6 +75,8 @@ pub enum NetworkCommand {
         send_response: Option<SendResponse<IncomingPacketFrame>>,
     },
     SendAudio(OpusAudioFrame),
+    SendRawAudio(RawAudioFrame),
+    RequestRecordRawOneMinute,
     Connect {
         destination: SocketAddr,
         send_response: SendResponse<Result<ConnectSuccess, ConnectError>>,
@@ -104,6 +106,8 @@ impl Display for NetworkCommand {
             Self::RemoveP2pClient { .. } => f.write_str("RemoveP2pClient"),
             Self::AttemptP2pSync { .. } => f.write_str("AttemptP2pSync"),
             Self::KeepAliveP2pClients => f.write_str("KeepAliveP2pClients"),
+            Self::SendRawAudio { .. } => f.write_str("SendRawAudio"),
+            Self::RequestRecordRawOneMinute { .. } => f.write_str("RequestRecordRawOneMinute"),
         }
     }
 }
@@ -160,6 +164,11 @@ impl NetworkHandle {
 
     pub fn audio(&self, frame: OpusAudioFrame) -> Result<(), CommsNetworkError> {
         self.command(NetworkCommand::SendAudio(frame));
+        Ok(())
+    }
+
+    pub fn raw_audio(&self, frame: RawAudioFrame) -> Result<(), CommsNetworkError> {
+        self.command(NetworkCommand::SendRawAudio(frame));
         Ok(())
     }
 }
