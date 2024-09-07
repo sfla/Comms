@@ -27,11 +27,11 @@ struct ClientQueue {
 }
 
 impl ClientQueue {
-    fn new() -> Result<Self, audiopus::Error> {
+    fn new(current_volume: f32) -> Result<Self, audiopus::Error> {
         Ok(Self {
             decoder: Decoder::new(audiopus::SampleRate::Hz48000, Channels::Mono)?,
             sample_buffer_offset: 0,
-            current_volume: 1.0,
+            current_volume,
             current_index: AudioIndex::new(1).unwrap(),
             is_peer_to_peer: false,
         })
@@ -60,8 +60,8 @@ impl Multiplexer {
         }
     }
 
-    pub fn new_client(&mut self, id: ClientId) -> Result<(), audiopus::Error> {
-        self.client_queues.insert(id, ClientQueue::new()?);
+    pub fn new_client(&mut self, id: ClientId, volume: f32) -> Result<(), audiopus::Error> {
+        self.client_queues.insert(id, ClientQueue::new(volume)?);
         Ok(())
     }
 
@@ -243,6 +243,11 @@ impl MaybeSharedPlaybackSource<Multiplexer> for RcMultiplexer {
     }
 }
 
+pub enum MicCommand {
+    RecordRawUntil(Instant),
+    PublishCurrentState,
+}
+
 pub struct MicBuffer {
     network_handle: NetworkHandle,
     ui_handle: async_channel::Sender<UICommand>,
@@ -252,15 +257,16 @@ pub struct MicBuffer {
     encoder: Encoder,
     noise_gate: GateNoiseFilter,
     index: u64,
-    record_raw_until_receiver: Receiver<Instant>,
+    mic_command_rx: Receiver<MicCommand>,
     record_raw_until: Option<Instant>,
+    is_speaking: bool,
 }
 
 impl MicBuffer {
     pub fn new(
         network_handle: NetworkHandle,
         ui_handle: async_channel::Sender<UICommand>,
-        record_raw_until_receiver: Receiver<Instant>,
+        mic_command_rx: Receiver<MicCommand>,
     ) -> Result<Self, audiopus::Error> {
         Ok(Self {
             network_handle,
@@ -276,7 +282,8 @@ impl MicBuffer {
             noise_gate: GateNoiseFilter::new(2048),
             index: 1,
             record_raw_until: None,
-            record_raw_until_receiver,
+            mic_command_rx,
+            is_speaking: false,
         })
     }
 }
@@ -295,19 +302,32 @@ impl MicSink for MicBuffer {
                 &mut self.sample_buffer[self.sample_buffer_start..self.sample_buffer_start + 120];
             let state_change = self.noise_gate.update_window(next_samples);
             match state_change {
-                ChangedState::OPEN => self
-                    .ui_handle
-                    .try_send(UICommand::CurrentUserStartedSpeaking)
-                    .unwrap(),
-                ChangedState::CLOSED => self
-                    .ui_handle
-                    .try_send(UICommand::CurrentUserStoppedSpeaking)
-                    .unwrap(),
+                ChangedState::OPEN => {
+                    self.is_speaking = true;
+                    self.ui_handle
+                        .try_send(UICommand::CurrentUserStartedSpeaking)
+                        .unwrap()
+                }
+                ChangedState::CLOSED => {
+                    self.is_speaking = false;
+                    self.ui_handle
+                        .try_send(UICommand::CurrentUserStoppedSpeaking)
+                        .unwrap()
+                }
                 _ => (),
             };
 
-            if let Ok(until) = self.record_raw_until_receiver.try_recv() {
-                self.record_raw_until = Some(until);
+            if let Ok(command) = self.mic_command_rx.try_recv() {
+                match command {
+                    MicCommand::RecordRawUntil(until) => self.record_raw_until = Some(until),
+                    MicCommand::PublishCurrentState => {
+                        if self.is_speaking {
+                            self.ui_handle
+                                .try_send(UICommand::CurrentUserStartedSpeaking)
+                                .unwrap();
+                        }
+                    }
+                }
             }
 
             if let Some(until) = self.record_raw_until.as_mut() {

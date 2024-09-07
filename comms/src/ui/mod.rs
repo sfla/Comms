@@ -31,7 +31,7 @@ use comms_lib::packet::{
     UserJoined, UserLeft,
 };
 
-use crate::audio::ipc::{AudioCommand, AudioHandle, EventLoopCreationError};
+use crate::audio::ipc::{AudioCommand, AudioHandle, AudioUser, EventLoopCreationError};
 use crate::network::future::{attempt_p2p, keep_alive, P2pDestination};
 use crate::network::ipc::{ConnectError, NetworkCommand, NetworkEvent, NetworkHandle};
 use crate::ui::ipc::{AudioIPCInitStatus, UICommand};
@@ -80,13 +80,7 @@ fn finish_connect(
         network_event_sender.clone(),
     ));
 
-    audio_handle.send(AudioCommand::ServerConnect).unwrap();
-
     for user in existing_users.iter() {
-        audio_handle
-            .send(AudioCommand::NewClient(user.client_id))
-            .unwrap();
-
         glib_context.spawn_local(attempt_p2p(
             network_handle.clone(),
             network_event_sender.clone(),
@@ -123,13 +117,10 @@ fn finish_connect(
     UiUser::attach_signal_handlers(user.clone(), audio_handle.clone(), ui.clone());
     let mut users = HashMap::from([(client_id, user)]);
 
-    for user in existing_users.into_iter() {
+    for user in existing_users.iter() {
         let one_way_latency = user.round_trip_latency.saturating_add(round_trip_latency) / 2;
 
         let volume = if let Some(volume) = saved_volumes.get(&user.user_id) {
-            audio_handle
-                .send(AudioCommand::ChangeClientVolume(user.client_id, *volume))
-                .unwrap();
             *volume
         } else {
             100u16
@@ -159,6 +150,13 @@ fn finish_connect(
         .set_transition_type(gtk::StackTransitionType::SlideUp);
     ui.pane_stack.set_visible_child_name("user_list");
     ui.disconnect_button_revealer.set_reveal_child(true);
+    let audio_users = existing_users
+        .iter()
+        .map(|u| AudioUser {
+            id: u.client_id,
+            volume: *saved_volumes.get(&u.user_id).unwrap_or(&100u16),
+        })
+        .collect();
     ui.set_state(UiState::Main {
         users,
         client_id,
@@ -169,6 +167,9 @@ fn finish_connect(
         username,
         server,
     });
+    audio_handle
+        .send(AudioCommand::ServerConnect(audio_users))
+        .unwrap();
 }
 
 async fn try_connect(
@@ -840,8 +841,17 @@ async fn handle_network_events(
                                 return Ok(());
                             };
                             let packet: Packet<UserJoined> = packet.finish_parse()?;
+
+                            let volume = if let Some(volume) =
+                                saved_volumes.get(&packet.body.user.user_id)
+                            {
+                                *volume
+                            } else {
+                                100u16
+                            };
+
                             audio
-                                .send(AudioCommand::NewClient(packet.body.user.client_id))
+                                .send(AudioCommand::NewClient(packet.body.user.client_id, volume))
                                 .unwrap();
                             let glib_context = glib::MainContext::default();
                             glib_context.spawn_local(attempt_p2p(
@@ -862,22 +872,6 @@ async fn handle_network_events(
                                 .round_trip_latency
                                 .saturating_add(*round_trip_latency)
                                 / 2;
-
-                            let volume = if let Some(volume) =
-                                saved_volumes.get(&packet.body.user.user_id)
-                            {
-                                audio
-                                    .send({
-                                        AudioCommand::ChangeClientVolume(
-                                            packet.body.user.client_id,
-                                            *volume,
-                                        )
-                                    })
-                                    .unwrap();
-                                *volume
-                            } else {
-                                100u16
-                            };
 
                             let (row_widget, latency_widget) =
                                 UiUser::create_widgets(&packet.body.user.name, *round_trip_latency);

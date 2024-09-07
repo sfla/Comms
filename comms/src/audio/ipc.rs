@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Receiver, SendError, Sender};
 
-use crate::audio::buffer::RcMultiplexer;
+use crate::audio::buffer::{MicCommand, RcMultiplexer};
 use crate::audio::{AudioPlatform, AudioPlatformImpl};
 use crate::ui::ipc::UICommand;
 use crate::{NetworkHandle, RESOURCES_DIR};
@@ -21,8 +21,13 @@ pub enum EventLoopCreationError {
     OutputDeviceError(String),
 }
 
+pub struct AudioUser {
+    pub id: ClientId,
+    pub volume: u16,
+}
+
 pub enum AudioCommand {
-    NewClient(ClientId),
+    NewClient(ClientId, u16),
     DropClient(ClientId),
     ServerDisconnect,
     AudioFromClient(ClientId, OpusAudioFrame, bool),
@@ -31,14 +36,14 @@ pub enum AudioCommand {
     ChangeClientVolume(ClientId, u16),
     UserJoined,
     UserLeft,
-    ServerConnect,
+    ServerConnect(Vec<AudioUser>),
     RecordRawOneMinute,
 }
 
 impl Display for AudioCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            AudioCommand::NewClient(_) => f.write_str("NewClient"),
+            AudioCommand::NewClient(_, _) => f.write_str("NewClient"),
             AudioCommand::DropClient(_) => f.write_str("DropClient"),
             AudioCommand::ServerDisconnect => f.write_str("ServerDisconnect"),
             AudioCommand::AudioFromClient(..) => f.write_str("AudioFromClient"),
@@ -47,7 +52,7 @@ impl Display for AudioCommand {
             AudioCommand::ChangeClientVolume(..) => f.write_str("ChangeClientVolume"),
             AudioCommand::UserJoined => f.write_str("UserJoined"),
             AudioCommand::UserLeft => f.write_str("UserLeft"),
-            AudioCommand::ServerConnect => f.write_str("ServerConnect"),
+            AudioCommand::ServerConnect { .. } => f.write_str("ServerConnect"),
             AudioCommand::RecordRawOneMinute => f.write_str("RecordRawOneMinute"),
         }
     }
@@ -88,7 +93,7 @@ pub struct AudioReceiver<R> {
     pub(crate) command_rx: Receiver<AudioCommand>,
     pub(crate) ui_handle: async_channel::Sender<UICommand>,
     pub(crate) network_handle: NetworkHandle,
-    pub(crate) record_raw_until_sender: Sender<Instant>,
+    pub(crate) mic_command_tx: Sender<MicCommand>,
 }
 
 impl<R> AudioReceiver<R> {
@@ -98,7 +103,7 @@ impl<R> AudioReceiver<R> {
         command_rx: Receiver<AudioCommand>,
         ui_handle: async_channel::Sender<UICommand>,
         network_handle: NetworkHandle,
-        record_raw_until_sender: Sender<Instant>,
+        mic_command_tx: Sender<MicCommand>,
     ) -> Self {
         Self {
             multiplexer,
@@ -106,7 +111,7 @@ impl<R> AudioReceiver<R> {
             command_rx,
             ui_handle,
             network_handle,
-            record_raw_until_sender,
+            mic_command_tx,
         }
     }
 }
@@ -120,9 +125,9 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
         for command in self.command_rx.try_iter() {
             let command: AudioCommand = command;
             match command {
-                AudioCommand::NewClient(id) => self.multiplexer.with(|multiplexer| {
+                AudioCommand::NewClient(id, volume) => self.multiplexer.with(|multiplexer| {
                     multiplexer
-                        .new_client(id)
+                        .new_client(id, volume as f32 / 100.0)
                         .expect("Failed to create new multiplexer client")
                 }),
                 AudioCommand::DropClient(id) => self.multiplexer.with(|multiplexer| {
@@ -169,7 +174,7 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
                         multiplexer.change_client_volume(id, volume as f32 / 100.0);
                     });
                 }
-                AudioCommand::ServerConnect => {
+                AudioCommand::ServerConnect(users) => {
                     let file = Cursor::new(
                         RESOURCES_DIR
                             .get_file("self-joined.ogg")
@@ -177,8 +182,17 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
                             .contents(),
                     );
                     let ogg_reader = OggStreamReader::new(file).unwrap();
-                    self.multiplexer
-                        .with(|multiplexer| multiplexer.play_sound_effect(ogg_reader))
+                    self.multiplexer.with(|multiplexer| {
+                        multiplexer.play_sound_effect(ogg_reader);
+                        for u in users {
+                            multiplexer
+                                .new_client(u.id, u.volume as f32 / 100.0)
+                                .unwrap();
+                        }
+                    });
+                    self.mic_command_tx
+                        .send(MicCommand::PublishCurrentState)
+                        .unwrap();
                 }
                 AudioCommand::UserJoined => {
                     let file = Cursor::new(
@@ -199,8 +213,10 @@ impl<R> InterruptReceiver<R> for AudioReceiver<R> {
                         .with(|multiplexer| multiplexer.play_sound_effect(ogg_reader))
                 }
                 AudioCommand::RecordRawOneMinute => self
-                    .record_raw_until_sender
-                    .send(Instant::now() + Duration::from_secs(60))
+                    .mic_command_tx
+                    .send(MicCommand::RecordRawUntil(
+                        Instant::now() + Duration::from_secs(60),
+                    ))
                     .unwrap(),
             }
         }
