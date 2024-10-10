@@ -1,11 +1,4 @@
 use async_std::task::sleep;
-use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::ops::DerefMut;
-use std::rc::Rc;
-use std::time::Duration;
-
 use directories::ProjectDirs;
 use futures::channel::mpsc::Sender;
 use futures::stream::StreamExt;
@@ -22,6 +15,12 @@ use gtk::{
     RevealerTransitionType, Shortcut, ShortcutController, ShortcutTrigger, StyleContext,
 };
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::ops::DerefMut;
+use std::rc::Rc;
+use std::time::Duration;
 use uuid::Uuid;
 
 use comms_lib::network::CommsNetworkError;
@@ -1164,6 +1163,14 @@ pub fn run(
                 .contents_utf8()
                 .unwrap(),
         );
+
+        #[cfg(windows)]
+        {
+            // Font rendering on Windows with dark mode is terrible
+            use adw::{ColorScheme, StyleManager};
+            let style_manager = StyleManager::default();
+            style_manager.set_color_scheme(ColorScheme::ForceLight);
+        }
 
         gtk::style_context_add_provider_for_display(
             &Display::default().unwrap(),
