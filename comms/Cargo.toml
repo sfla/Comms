@@ -12,10 +12,9 @@ async-std = "1.4"
 audiopus = "0.2.0"
 chrono = "0.4.22"
 comms-lib = { path = "../comms-lib" }
-directories = "5.0"
+directories = "6.0"
 futures = "0.3"
 futures-timer = "3.0"
-gdk-pixbuf = "0.20"
 gio = "0.20"
 glib = "0.20"
 gtk = { version = "0.9", package = "gtk4", features = ["v4_6"] }
@@ -23,10 +22,10 @@ include_dir = "0.7"
 lewton = "0.10.2"
 mio = { version = "1.0", features = ["net", "os-poll"] }
 dasp = "0.11.0"
-sentry = { version = "0.34", features = ["debug-images"] }
+sentry = { version = "0.36", features = ["debug-images"] }
 serde = "1.0"
 serde_json = "1.0"
-ureq = { version = "2.5.0", features = ["json"] }
+ureq = { version = "3.0", features = ["json"] }
 uuid = { version = "1.1.1", features = ["v4", "fast-rng"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]

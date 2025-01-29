@@ -5,10 +5,9 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-comms-lib = { path = "../comms-lib" }
 dasp = { version = "0.11.0", features = ["interpolate", "interpolate-linear"] }
 ringbuffer = "0.15"
-audio_thread_priority = "0.32"
+audio_thread_priority = "0.33"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 lazy_static = "1.4"
