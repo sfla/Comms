@@ -138,7 +138,7 @@ impl TcpConnection {
                 Err(e) if e.kind() == io::ErrorKind::ConnectionReset => {
                     return Err(CommsNetworkError::Closed)
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(CommsNetworkError::Io(e)),
             }
         }
     }
@@ -341,7 +341,9 @@ impl<'a> TcpReadIter<'a> {
         }
 
         while let Some(result) = self.next_frame() {
-            result.map_err(|e| e.into()).and_then(&mut f)?;
+            result
+                .map_err(CommsNetworkError::Deserialize)
+                .and_then(&mut f)?;
         }
         Ok(())
     }
@@ -426,7 +428,10 @@ impl ClientUdpReadIter<'_> {
             return Err(e);
         }
         for (result, addr) in self {
-            if let Err(e) = result.map_err(|e| e.into()).and_then(|p| f(p, addr)) {
+            if let Err(e) = result
+                .map_err(CommsNetworkError::Deserialize)
+                .and_then(|p| f(p, addr))
+            {
                 if *server_addr == addr {
                     return Err(e);
                 } else if let Some(client_id) = known_sockets.get(&addr) {
@@ -486,7 +491,9 @@ impl ServerUdpReadIter<'_> {
             return Err(e);
         }
         for (result, addr) in self {
-            result.map_err(|e| e.into()).and_then(|p| f(p, addr))?
+            result
+                .map_err(CommsNetworkError::Deserialize)
+                .and_then(|p| f(p, addr))?
         }
         Ok(())
     }
@@ -504,7 +511,7 @@ impl<'a> UdpReadIter<'a, ServerUdpPacket> for ServerUdpReadIter<'a> {
     }
 }
 
-impl<'a> Iterator for ServerUdpReadIter<'a> {
+impl Iterator for ServerUdpReadIter<'_> {
     type Item = (
         Result<<ServerUdpPacket as UdpPacket>::IncomingPacket, SerializeError>,
         SocketAddr,
@@ -522,12 +529,9 @@ pub enum UpdateFromStream {
     ConnectionClosed,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug)]
 pub enum CommsNetworkError {
-    #[error("Connection is now closed")]
     Closed,
-    #[error("IO error")]
-    Io(#[from] io::Error),
-    #[error("(De)serializeError")]
-    Deserialize(#[from] bincode::Error),
+    Io(io::Error),
+    Deserialize(bincode::Error),
 }

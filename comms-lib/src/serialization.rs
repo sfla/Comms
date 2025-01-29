@@ -53,7 +53,7 @@ pub struct IncomingPacketFrameRef<'a> {
     tcp_stream_max_size: usize,
 }
 
-impl<'a> Debug for IncomingPacketFrameRef<'a> {
+impl Debug for IncomingPacketFrameRef<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(&format!("{:?}", self.header))
     }

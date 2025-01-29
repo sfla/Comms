@@ -259,7 +259,8 @@ pub async fn request_any<Req>(
 where
     Req: PacketBody,
 {
-    let packet = OutgoingPacketFrame::from_packet(reply_to, &request)?;
+    let packet = OutgoingPacketFrame::from_packet(reply_to, &request)
+        .map_err(CommsNetworkError::Deserialize)?;
     Ok(NetworkFuture::new(handle, |s| NetworkCommand::Packet {
         protocol,
         packet,
@@ -298,7 +299,8 @@ pub fn send<Req>(
 where
     Req: PacketBody + Serialize,
 {
-    let packet = OutgoingPacketFrame::from_packet(reply_to, &request)?;
+    let packet = OutgoingPacketFrame::from_packet(reply_to, &request)
+        .map_err(CommsNetworkError::Deserialize)?;
     handle.command(NetworkCommand::Packet {
         protocol: packet_type,
         packet,

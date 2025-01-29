@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::net::SocketAddr;
@@ -143,7 +144,7 @@ fn handle_udp_packet(
             println!("Found reply_to for P2P sync");
             match parsed_packet.finish_parse() {
                 Ok(p) => sender.done(Ok((start.elapsed(), p))),
-                Err(e) => sender.done(Err(e.into())),
+                Err(e) => sender.done(Err(CommsNetworkError::Deserialize(e))),
             }
             return Ok(());
         }
@@ -152,7 +153,9 @@ fn handle_udp_packet(
     let kind = parsed_packet.header.kind;
     match kind {
         AudioToClient::KIND_ID => {
-            let audio_to_client: Packet<AudioToClient> = parsed_packet.finish_parse()?;
+            let audio_to_client: Packet<AudioToClient> = parsed_packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?;
             audio_handle.send_audio(
                 audio_to_client.body.index,
                 audio_to_client.body.author,
@@ -165,11 +168,14 @@ fn handle_udp_packet(
             packet: OutgoingPacketFrame::from_packet(
                 Some(parsed_packet.header.id),
                 &P2pAcknowledge(),
-            )?,
+            )
+            .map_err(CommsNetworkError::Deserialize)?,
             send_response: None,
         }),
         P2pAcknowledgeBack::KIND_ID => {
-            let ack_back: Packet<P2pAcknowledgeBack> = parsed_packet.finish_parse()?;
+            let ack_back: Packet<P2pAcknowledgeBack> = parsed_packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?;
             println!(
                 "P2P connection with {} started successfully ({:.1}ms RT) via ack-back",
                 addr,
@@ -222,7 +228,10 @@ fn handle_tcp_packet(
     let kind = stream_packet.header.kind;
     if kind == Hello::KIND_ID && await_hello.is_some() {
         if let Some((udp_local_addr, send_response)) = await_hello.take() {
-            let hello: Hello = stream_packet.finish_parse()?.body;
+            let hello: Hello = stream_packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?
+                .body;
             *client_id = Some(hello.client_id);
             send_response.done(Ok(ConnectSuccess {
                 hello,
@@ -524,7 +533,7 @@ impl Worker {
                                         }
                                     }
                                     Err(e) => {
-                                        send_response.done(Err(e.into()));
+                                        send_response.done(Err(CommsNetworkError::Deserialize(e)));
                                     }
                                 }
                             }
@@ -650,11 +659,11 @@ impl Display for NetworkError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             NetworkError::Io(None) => f.write_str("Io error (unclear which, though)"),
-            NetworkError::Io(Some(e)) => e.fmt(f),
+            NetworkError::Io(Some(e)) => std::fmt::Debug::fmt(&e, f),
             NetworkError::SendCommandToAudioThread => {
                 f.write_str("Failed to send command to audio thread")
             }
-            NetworkError::ReceiveFromAudioThread(e) => e.fmt(f),
+            NetworkError::ReceiveFromAudioThread(e) => std::fmt::Debug::fmt(&e, f),
         }
     }
 }
@@ -691,7 +700,7 @@ impl Display for SendToNetworkThreadError {
         match self {
             SendToNetworkThreadError::Network(e) => e.fmt(f),
             SendToNetworkThreadError::ThreadSend => f.write_str("Failed to send between threads"),
-            SendToNetworkThreadError::SetReadiness(e) => e.fmt(f),
+            SendToNetworkThreadError::SetReadiness(e) => std::fmt::Debug::fmt(&e, f),
         }
     }
 }

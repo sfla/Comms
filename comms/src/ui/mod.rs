@@ -839,7 +839,9 @@ async fn handle_network_events(
                             else {
                                 return Ok(());
                             };
-                            let packet: Packet<UserJoined> = packet.finish_parse()?;
+                            let packet: Packet<UserJoined> = packet
+                                .finish_parse()
+                                .map_err(CommsNetworkError::Deserialize)?;
 
                             let volume = if let Some(volume) =
                                 saved_volumes.get(&packet.body.user.user_id)
@@ -900,7 +902,9 @@ async fn handle_network_events(
                             else {
                                 return Ok(());
                             };
-                            let packet: Packet<UserLeft> = packet.finish_parse()?;
+                            let packet: Packet<UserLeft> = packet
+                                .finish_parse()
+                                .map_err(CommsNetworkError::Deserialize)?;
                             audio
                                 .send(AudioCommand::DropClient(packet.body.client_id))
                                 .unwrap();
@@ -917,7 +921,9 @@ async fn handle_network_events(
                             audio.send(AudioCommand::RecordRawOneMinute).unwrap();
                         }
                         ErrorResponse::KIND_ID => {
-                            let packet: Packet<ErrorResponse> = packet.finish_parse()?;
+                            let packet: Packet<ErrorResponse> = packet
+                                .finish_parse()
+                                .map_err(CommsNetworkError::Deserialize)?;
                             let Some((users, user_list, user_id, saved_volumes, username, server)) =
                                 ui.borrow_mut().use_state(|state| {
                                     if let UiState::Main {

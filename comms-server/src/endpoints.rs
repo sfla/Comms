@@ -341,17 +341,25 @@ fn tcp_packet_to_endpoint(
         FinishConnect::KIND_ID => spawner.borrow().spawn(finish_connect(
             spawner.clone(),
             context,
-            packet.finish_parse()?,
+            packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?,
         )),
-        Disconnect::KIND_ID => spawner
-            .borrow()
-            .spawn(receive_disconnect_packet(context, packet.finish_parse()?)),
+        Disconnect::KIND_ID => spawner.borrow().spawn(receive_disconnect_packet(
+            context,
+            packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?,
+        )),
         RecordRawOneMinute::KIND_ID => spawner
             .borrow()
             .spawn(receive_record_raw_one_minute(spawner.clone(), context)),
-        RawAudio::KIND_ID => spawner
-            .borrow()
-            .spawn(receive_raw_audio(context, packet.finish_parse()?)),
+        RawAudio::KIND_ID => spawner.borrow().spawn(receive_raw_audio(
+            context,
+            packet
+                .finish_parse()
+                .map_err(CommsNetworkError::Deserialize)?,
+        )),
         KeepAlive::KIND_ID => (),
         _ => spawner
             .borrow()

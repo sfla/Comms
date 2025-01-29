@@ -157,7 +157,7 @@ fn main() -> Result<(), CommsServerError> {
                                 &spawner.borrow(),
                                 network_handle.clone(),
                             )
-                            .map_err(|e| e.into())
+                            .map_err(CommsNetworkError::Deserialize)
                         })
                         .unwrap();
                 }
