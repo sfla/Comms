@@ -6,7 +6,6 @@ use windows::Win32::Foundation::WIN32_ERROR;
 use windows::Win32::Media::Audio;
 use windows::Win32::System::Com::StructuredStorage;
 use windows::Win32::System::{Com, Threading};
-use windows::Win32::UI::Shell::PropertiesSystem;
 
 use crate::buffer::{MicSink, PlaybackSource};
 use crate::wasapi::audio_connection::WasapiCreationError;
@@ -208,8 +207,8 @@ impl IMMDeviceWrapper {
 
         let mut property_value = match unsafe {
             property_store.GetValue(&std::mem::transmute::<
-                Properties::DEVPROPKEY,
-                PropertiesSystem::PROPERTYKEY,
+                Foundation::DEVPROPKEY,
+                Foundation::PROPERTYKEY,
             >(Properties::DEVPKEY_Device_FriendlyName))
         } {
             Ok(property_value) => property_value,
@@ -250,7 +249,7 @@ impl IMMDeviceWrapper {
             Err(e) => panic!("{}", e),
         };
 
-        let communication_device_id = unsafe { communication_device_id.to_hstring() }.ok()?;
+        let communication_device_id = unsafe { communication_device_id.to_hstring() };
         let device = match unsafe { com::ENUMERATOR.0.GetDevice(&communication_device_id) } {
             Ok(device) => device,
             Err(ref e) if WIN32_ERROR::from_error(e) == Some(Foundation::ERROR_NOT_FOUND) => {

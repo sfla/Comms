@@ -11,7 +11,7 @@ pub fn run() {
         Registry::RegCreateKeyExA(
             Registry::HKEY_CURRENT_USER,
             s!("SOFTWARE\\Classes\\comms"),
-            0u32,
+            None,
             PCSTR::null(),
             Registry::REG_OPTION_NON_VOLATILE,
             Registry::KEY_WRITE,
@@ -47,7 +47,7 @@ pub fn run() {
         Registry::RegCreateKeyExA(
             key,
             s!("shell\\open\\command"),
-            0u32,
+            None,
             PCSTR::null(),
             Registry::REG_OPTION_NON_VOLATILE,
             Registry::KEY_WRITE,

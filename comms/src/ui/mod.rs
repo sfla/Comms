@@ -1413,7 +1413,7 @@ pub fn run(
         {
             use gdk4_win32::Win32Surface;
             use std::ffi::c_void;
-            use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+            use windows::Win32::Foundation::HWND;
             use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
             use windows::Win32::UI::WindowsAndMessaging::WM_CLOSE;
             use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMINNOACTIVE};
@@ -1434,12 +1434,7 @@ pub fn run(
                     let _ = unsafe { ShowWindow(app_window, SW_SHOWMINNOACTIVE) };
 
                     unsafe {
-                        SendMessageW(
-                            HWND(warp_window as *mut c_void),
-                            WM_CLOSE,
-                            WPARAM(0),
-                            LPARAM(0),
-                        );
+                        SendMessageW(HWND(warp_window as *mut c_void), WM_CLOSE, None, None);
                     };
 
                     window.show();

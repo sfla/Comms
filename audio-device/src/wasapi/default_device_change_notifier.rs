@@ -59,7 +59,7 @@ impl IMMNotificationClient_Impl for CommsImmNotificationClient_Impl {
     fn OnPropertyValueChanged(
         &self,
         _: &PCWSTR,
-        _: &windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY,
+        _: &windows::Win32::Foundation::PROPERTYKEY,
     ) -> windows::core::Result<()> {
         Ok(())
     }

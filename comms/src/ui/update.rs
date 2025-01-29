@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt::Formatter;
 use std::fs::File;
 use std::io;
+use std::io::Read;
 use std::io::Write;
 use std::num::ParseIntError;
 use std::path::PathBuf;
@@ -11,6 +12,7 @@ use chrono::{DateTime, SubsecRound};
 use directories::ProjectDirs;
 use gtk::prelude::*;
 use gtk::{Button, Label};
+use ureq::http::header::ToStrError;
 
 #[derive(Debug)]
 enum CheckForUpdateError {
@@ -38,6 +40,12 @@ impl From<io::Error> for CheckForUpdateError {
 
 impl From<ParseIntError> for CheckForUpdateError {
     fn from(_: ParseIntError) -> Self {
+        Self::Parse
+    }
+}
+
+impl From<ToStrError> for CheckForUpdateError {
+    fn from(_: ToStrError) -> Self {
         Self::Parse
     }
 }
@@ -86,7 +94,8 @@ pub async fn check_for_updates(
 
             let json = ureq::get("https://gitlab.com/api/v4/projects/comms-app%2Fcomms/pipelines/?status=success&per_page=1&ref=main")
                 .call()?
-                .into_json::<serde_json::Value>()?;
+                .body_mut()
+                .read_json::<serde_json::Value>()?;
             let latest_pipeline_id = match json
                 .get(0)
                 .and_then(|o| o.get("id"))
@@ -100,7 +109,8 @@ pub async fn check_for_updates(
                 "https://gitlab.com/api/v4/projects/comms-app%2Fcomms/pipelines/{latest_pipeline_id}/jobs"
             ))
                 .call()?
-                .into_json::<serde_json::Value>()?;
+                .body_mut()
+                .read_json::<serde_json::Value>()?;
 
             let json = match json.as_array()
                 .and_then(|jobs| jobs.iter().find(|job| {
@@ -186,15 +196,15 @@ pub async fn check_for_updates(
         let (tx, rx) = async_channel::unbounded();
         std::thread::spawn(move || {
             let result: Result<(), CheckForUpdateError> = (|| {
-                let response = ureq::get(&format!("https://gitlab.com/api/v4/projects/comms-app%2Fcomms/jobs/{job_id}/artifacts/comms.exe"))
+                let mut response = ureq::get(&format!("https://gitlab.com/api/v4/projects/comms-app%2Fcomms/jobs/{job_id}/artifacts/comms.exe"))
                     .call()?;
-                let content_length: usize = match response.header("Content-Length") {
-                    Some(h) => h.parse()?,
+                let content_length: usize = match response.headers().get("Content-Length") {
+                    Some(h) => h.to_str()?.parse()?,
                     None => return Err(CheckForUpdateError::Parse),
                 };
                 let mut buf = Vec::with_capacity(content_length);
                 let mut chunk = [0u8; 4096];
-                let mut reader = response.into_reader();
+                let mut reader = response.body_mut().as_reader();
                 loop {
                     match reader.read(&mut chunk)? {
                         0 => break,

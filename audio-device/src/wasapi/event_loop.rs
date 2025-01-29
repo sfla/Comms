@@ -62,10 +62,7 @@ trait SelectWasapiHandle {
 impl SelectWasapiHandle for Vec<WasapiHandle> {
     fn select(&mut self) -> Result<WasapiHandle, String> {
         let win_handles: Vec<HANDLE> = self.iter().map(|h| h.get_win_handle()).collect();
-        let handle_index = match wait_for_handle_signal(&win_handles) {
-            Ok(index) => index,
-            Err(description) => return Err(description),
-        };
+        let handle_index = wait_for_handle_signal(&win_handles)?;
 
         Ok(self.get(handle_index).cloned().unwrap())
     }
