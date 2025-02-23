@@ -142,7 +142,7 @@ impl AudioPlot {
         chunk_maxes.retain(|(instant, _)| instant.elapsed() < GRAPH_DURATION);
     }
 
-    fn buckets(&mut self) -> Line {
+    fn buckets(&self) -> Line {
         let buckets = &self.buckets;
 
         if buckets.is_empty() {
@@ -154,7 +154,7 @@ impl AudioPlot {
             .name(format!("Samples (groups of {SAMPLES_IN_BUCKET})"))
     }
 
-    fn rmses(&mut self) -> Line {
+    fn rmses(&self) -> Line {
         let chunks = &self.chunk_rmses;
 
         if chunks.is_empty() {
@@ -166,7 +166,7 @@ impl AudioPlot {
             .name("Chunk RMSes")
     }
 
-    fn maxes(&mut self) -> Line {
+    fn maxes(&self) -> Line {
         let chunks = &self.chunk_maxes;
 
         if chunks.is_empty() {
