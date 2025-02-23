@@ -59,7 +59,7 @@ impl State {
     fn attenuate_sample(&mut self, sample: f32) -> f32 {
         let (new_state, sample) = match self {
             State::Off => (State::Off, Sample::EQUILIBRIUM),
-            State::Attack(mut progress) => {
+            &mut State::Attack(mut progress) => {
                 progress += 1;
                 let state = if progress == ATTACK_SAMPLE_COUNT {
                     State::Active
@@ -73,7 +73,7 @@ impl State {
                 )
             }
             State::Active => (State::Active, sample),
-            State::Hold(mut progress) => {
+            &mut State::Hold(mut progress) => {
                 progress += 1;
                 let state = if progress == HOLD_SAMPLE_COUNT {
                     State::Release(0)
@@ -82,7 +82,7 @@ impl State {
                 };
                 (state, sample)
             }
-            State::Release(mut progress) => {
+            &mut State::Release(mut progress) => {
                 progress += 1;
                 let state = if progress == RELEASE_SAMPLE_COUNT {
                     State::Off

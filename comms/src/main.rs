@@ -1,14 +1,14 @@
 use std::borrow::Cow;
-use std::sync::mpsc;
 use std::sync::Arc;
+use std::sync::mpsc;
 use std::{panic, process};
 
 use sentry::Hub;
 
 #[cfg(windows)]
-use windows::core::w;
-#[cfg(windows)]
 use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+#[cfg(windows)]
+use windows::core::w;
 
 use crate::audio::ipc::AudioHandle;
 use crate::audio::{AudioPlatform, AudioPlatformImpl};
@@ -28,6 +28,16 @@ pub static RESOURCES_DIR: include_dir::Dir =
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/resources/embedded");
 
 fn main() {
+    #[cfg(windows)]
+    {
+        // Set app user model ID (and set the same for the warp bundle) so that pinning
+        // Comms will pin the top-level executable, not the nested one.
+        unsafe { SetCurrentProcessExplicitAppUserModelID(w!("mitchhentges.comms")) }.unwrap();
+        // Memory usage on Windows with the opengl/gl/vulkan renderers are much higher,
+        // so explicitly fall back to tried 'n true "cairo".
+        unsafe { std::env::set_var("GSK_RENDERER", "cairo") };
+    }
+
     let sentry = option_env!("SENTRY_DSN").map(|sentry_dsn| {
         (
             sentry::init((
@@ -42,16 +52,6 @@ fn main() {
             Hub::current(),
         )
     });
-
-    #[cfg(windows)]
-    {
-        // Set app user model ID (and set the same for the warp bundle) so that pinning
-        // Comms will pin the top-level executable, not the nested one.
-        unsafe { SetCurrentProcessExplicitAppUserModelID(w!("mitchhentges.comms")) }.unwrap();
-        // Memory usage on Windows with the opengl/gl/vulkan renderers are much higher,
-        // so explicitly fall back to tried 'n true "cairo".
-        std::env::set_var("GSK_RENDERER", "cairo");
-    }
 
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {

@@ -85,7 +85,7 @@ pub fn format_to_waveformatextensible(format: &Format) -> Audio::WAVEFORMATEXTEN
 
 pub unsafe fn format_from_waveformatex_ptr(
     waveformatex_ptr: *const Audio::WAVEFORMATEX,
-) -> Option<Format> {
+) -> Option<Format> { unsafe {
     let data_type = match (
         (*waveformatex_ptr).wBitsPerSample,
         (*waveformatex_ptr).wFormatTag as u32,
@@ -111,7 +111,7 @@ pub unsafe fn format_from_waveformatex_ptr(
         data_type,
     };
     Some(format)
-}
+}}
 
 pub struct WaveFormatExPtr(pub *mut Audio::WAVEFORMATEX);
 

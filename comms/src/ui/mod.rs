@@ -3,16 +3,16 @@ use directories::ProjectDirs;
 use futures::channel::mpsc::Sender;
 use futures::stream::StreamExt;
 use futures_timer::Delay;
-use gio::prelude::*;
 use gio::ApplicationFlags;
+use gio::prelude::*;
 use glib::ControlFlow::{Break, Continue};
-use glib::{timeout_add_local, Propagation, SignalHandlerId};
+use glib::{Propagation, SignalHandlerId, timeout_add_local};
 use gtk::gdk::Display;
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::*;
 use gtk::{
-    gdk, CallbackAction, DialogFlags, Orientation, PositionType, ResponseType,
-    RevealerTransitionType, Shortcut, ShortcutController, ShortcutTrigger, StyleContext,
+    CallbackAction, DialogFlags, Orientation, PositionType, ResponseType, RevealerTransitionType,
+    Shortcut, ShortcutController, ShortcutTrigger, StyleContext, gdk,
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -31,10 +31,10 @@ use comms_lib::packet::{
 };
 
 use crate::audio::ipc::{AudioCommand, AudioHandle, AudioUser, EventLoopCreationError};
-use crate::network::future::{attempt_p2p, keep_alive, P2pDestination};
+use crate::network::future::{P2pDestination, attempt_p2p, keep_alive};
 use crate::network::ipc::{ConnectError, NetworkCommand, NetworkEvent, NetworkHandle};
 use crate::ui::ipc::{AudioIPCInitStatus, UICommand};
-use crate::{network, RESOURCES_DIR};
+use crate::{RESOURCES_DIR, network};
 
 #[cfg(windows)]
 use crate::ui::update::check_for_updates;
@@ -1416,7 +1416,7 @@ pub fn run(
             use windows::Win32::Foundation::HWND;
             use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
             use windows::Win32::UI::WindowsAndMessaging::WM_CLOSE;
-            use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMINNOACTIVE};
+            use windows::Win32::UI::WindowsAndMessaging::{SW_SHOWMINNOACTIVE, ShowWindow};
 
             let warp_window: isize = warp_window.parse().unwrap();
             let handler_id = Rc::new(RefCell::new(None::<SignalHandlerId>));

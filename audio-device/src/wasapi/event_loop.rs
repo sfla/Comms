@@ -79,11 +79,11 @@ pub struct WasapiEventLoopBuilder<
 }
 
 impl<
-        M: MicSink,
-        P: PlaybackSource,
-        SP: MaybeSharedPlaybackSource<P>,
-        I: InterruptReceiver<WasapiEventLoopRegistration>,
-    > WasapiEventLoopBuilder<M, P, SP, I>
+    M: MicSink,
+    P: PlaybackSource,
+    SP: MaybeSharedPlaybackSource<P>,
+    I: InterruptReceiver<WasapiEventLoopRegistration>,
+> WasapiEventLoopBuilder<M, P, SP, I>
 {
     pub fn new(connection: WasapiAudioConnection<M, P, SP>) -> Self {
         Self {
@@ -116,11 +116,11 @@ pub struct WasapiEventLoop<
 }
 
 impl<
-        M: MicSink,
-        P: PlaybackSource,
-        SP: MaybeSharedPlaybackSource<P>,
-        I: InterruptReceiver<WasapiEventLoopRegistration>,
-    > EventLoop for WasapiEventLoop<M, P, SP, I>
+    M: MicSink,
+    P: PlaybackSource,
+    SP: MaybeSharedPlaybackSource<P>,
+    I: InterruptReceiver<WasapiEventLoopRegistration>,
+> EventLoop for WasapiEventLoop<M, P, SP, I>
 {
     type Registration = WasapiEventLoopRegistration;
     type Notify = WasapiEventLoopNotify;
