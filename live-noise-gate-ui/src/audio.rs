@@ -1,12 +1,12 @@
 use crate::ui::{Command, IncomingAudioPlotData};
-use audio_device::audio_connection::{create_minimal_event_loop, EventLoop};
+use audio_device::audio_connection::{EventLoop, create_minimal_event_loop};
 use audio_device::buffer::{MicSink, PlaybackSource, UnsharedPlaybackSource};
 use audio_device::noise_gate::{GateNoiseFilter, State};
 use dasp::Sample;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::iter;
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 
 pub const BUFFER_SIZE: usize = 4800;
 pub const SAMPLES_IN_CHUNK: usize = 480;

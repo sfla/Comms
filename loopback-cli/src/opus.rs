@@ -1,9 +1,9 @@
-use audio_device::audio_connection::{create_minimal_event_loop, EventLoop};
+use audio_device::audio_connection::{EventLoop, create_minimal_event_loop};
 use audio_device::buffer::{MicSink, PlaybackSource, UnsharedPlaybackSource};
 use audiopus::coder::{Decoder, Encoder};
 use audiopus::{Application, Channels, SampleRate};
 use dasp::Sample;
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 
 const BUFFER_SIZE: usize = 4800;
 

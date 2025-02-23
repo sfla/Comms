@@ -20,12 +20,12 @@ use comms_lib::packet::{
 };
 use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame};
 
+use crate::NetworkHandle;
 use crate::audio::ipc::{AudioCommand, AudioHandle};
 use crate::network::future::SendResponse;
 use crate::network::ipc::{
     CommandQueue, ConnectError, ConnectSuccess, NetworkCommand, NetworkEvent, Protocol,
 };
-use crate::NetworkHandle;
 use futures::channel::mpsc::Sender;
 
 pub mod future;

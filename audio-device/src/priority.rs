@@ -1,4 +1,4 @@
-use audio_thread_priority::{promote_current_thread_to_real_time, AudioThreadPriorityError};
+use audio_thread_priority::{AudioThreadPriorityError, promote_current_thread_to_real_time};
 
 pub fn bump_priority() -> Result<(), AudioThreadPriorityError> {
     // Using 128 samples because that's the smallest "engine period" that I could

@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 use std::{fmt, io};
 

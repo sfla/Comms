@@ -1,7 +1,7 @@
 use crate::client::{Clients, ConnectingClient, Connection};
 use crate::endpoints::{
-    close_connection, handle_tcp_stream, handle_udp_packet, spawn_close_connection,
-    CloseConnectionReason, Context, HandlePacketError, StreamStatus,
+    CloseConnectionReason, Context, HandlePacketError, StreamStatus, close_connection,
+    handle_tcp_stream, handle_udp_packet, spawn_close_connection,
 };
 use crate::network::{NetworkHandle, SendPacket, Target};
 use crate::task::{FutureError, FutureResult};

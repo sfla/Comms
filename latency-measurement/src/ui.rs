@@ -1,13 +1,13 @@
 mod ui_audio;
 
 use crate::ui_audio::AudioCommand;
+use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Context;
-use eframe::Frame;
 use egui::{Button, Color32, ProgressBar, Response, Ui, Widget};
 use egui_plot::{Legend, Line, Plot, PlotPoint, PlotPoints};
 use std::ops::Neg;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
 
 const TIME_PLOT_DURATION: Duration = Duration::from_millis(500);

@@ -1,7 +1,7 @@
-use audio_device::audio_connection::{create_minimal_event_loop, EventLoop};
+use audio_device::audio_connection::{EventLoop, create_minimal_event_loop};
 use audio_device::buffer::{MicSink, PlaybackSource, UnsharedPlaybackSource};
 use dasp::Sample;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 pub struct MicForLoopback {
     sender: Sender<f32>,

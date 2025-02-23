@@ -13,8 +13,8 @@ use crate::wasapi::com;
 use crate::wasapi::device::DefaultFormatError::BackendSpecific;
 use crate::wasapi::event_loop::WasapiEventLoopRegistration;
 use crate::wasapi::ms_multimedia::{
-    format_from_waveformatex_ptr, format_to_waveformatextensible, is_format_supported,
-    MmregSupportedFormatsError, WaveFormatExPtr,
+    MmregSupportedFormatsError, WaveFormatExPtr, format_from_waveformatex_ptr,
+    format_to_waveformatextensible, is_format_supported,
 };
 use crate::wasapi::sample_rate_conversion::{
     create_mic_sample_rate_converter, create_playback_sample_rate_converter,
@@ -54,7 +54,7 @@ impl IAudioClientWrapper {
             Err(MmregSupportedFormatsError::DeviceNotAvailable) => {
                 return Err(WasapiCreationError::InputInitializationFailure(
                     BuildStreamError::DeviceNotAvailable,
-                ))
+                ));
             }
             Err(MmregSupportedFormatsError::Other(hresult)) => {
                 return Err(WasapiCreationError::InputInitializationFailure(
@@ -62,7 +62,7 @@ impl IAudioClientWrapper {
                         "Unexpected failure during format-support checking: {}",
                         hresult.0,
                     )),
-                ))
+                ));
             }
         }
 
@@ -126,7 +126,7 @@ impl IAudioClientWrapper {
             Err(err) => {
                 return Err(BuildStreamError::BackendSpecific(format!(
                     "Failed to create event: {err:?}"
-                )))
+                )));
             }
         };
 

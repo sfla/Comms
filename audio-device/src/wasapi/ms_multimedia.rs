@@ -1,10 +1,10 @@
 use crate::wasapi::stream::{Format, SampleFormat, SampleRate};
 use std::mem;
 use std::mem::MaybeUninit;
-use windows::core::HRESULT;
 use windows::Win32::Foundation;
 use windows::Win32::Media::{Audio, KernelStreaming, Multimedia};
 use windows::Win32::System::Com;
+use windows::core::HRESULT;
 
 #[derive(Debug)]
 pub enum MmregSupportedFormatsError {
@@ -85,33 +85,36 @@ pub fn format_to_waveformatextensible(format: &Format) -> Audio::WAVEFORMATEXTEN
 
 pub unsafe fn format_from_waveformatex_ptr(
     waveformatex_ptr: *const Audio::WAVEFORMATEX,
-) -> Option<Format> { unsafe {
-    let data_type = match (
-        (*waveformatex_ptr).wBitsPerSample,
-        (*waveformatex_ptr).wFormatTag as u32,
-    ) {
-        (16, Audio::WAVE_FORMAT_PCM) => SampleFormat::I16,
-        (32, Multimedia::WAVE_FORMAT_IEEE_FLOAT) => SampleFormat::F32,
-        (n_bits, KernelStreaming::WAVE_FORMAT_EXTENSIBLE) => {
-            let waveformatextensible_ptr = waveformatex_ptr as *const Audio::WAVEFORMATEXTENSIBLE;
-            let sub = (*waveformatextensible_ptr).SubFormat;
-            if n_bits == 16 && sub == KernelStreaming::KSDATAFORMAT_SUBTYPE_PCM {
-                SampleFormat::I16
-            } else if n_bits == 32 && sub == Multimedia::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT {
-                SampleFormat::F32
-            } else {
-                return None;
+) -> Option<Format> {
+    unsafe {
+        let data_type = match (
+            (*waveformatex_ptr).wBitsPerSample,
+            (*waveformatex_ptr).wFormatTag as u32,
+        ) {
+            (16, Audio::WAVE_FORMAT_PCM) => SampleFormat::I16,
+            (32, Multimedia::WAVE_FORMAT_IEEE_FLOAT) => SampleFormat::F32,
+            (n_bits, KernelStreaming::WAVE_FORMAT_EXTENSIBLE) => {
+                let waveformatextensible_ptr =
+                    waveformatex_ptr as *const Audio::WAVEFORMATEXTENSIBLE;
+                let sub = (*waveformatextensible_ptr).SubFormat;
+                if n_bits == 16 && sub == KernelStreaming::KSDATAFORMAT_SUBTYPE_PCM {
+                    SampleFormat::I16
+                } else if n_bits == 32 && sub == Multimedia::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT {
+                    SampleFormat::F32
+                } else {
+                    return None;
+                }
             }
-        }
-        _ => return None,
-    };
-    let format = Format {
-        channels: (*waveformatex_ptr).nChannels as _,
-        sample_rate: SampleRate((*waveformatex_ptr).nSamplesPerSec),
-        data_type,
-    };
-    Some(format)
-}}
+            _ => return None,
+        };
+        let format = Format {
+            channels: (*waveformatex_ptr).nChannels as _,
+            sample_rate: SampleRate((*waveformatex_ptr).nSamplesPerSec),
+            data_type,
+        };
+        Some(format)
+    }
+}
 
 pub struct WaveFormatExPtr(pub *mut Audio::WAVEFORMATEX);
 

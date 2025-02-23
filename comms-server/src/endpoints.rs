@@ -117,7 +117,10 @@ async fn finish_connect(
                 let round_trip_latency = udp_association.udp_accepted_sent_at.elapsed();
                 println!(
                     "[{}] \"{}\" has connected (round trip latency: {:.1}ms, local socket addr: {:?})",
-                    &udp_association.public_udp_addr, &packet.body.name, (round_trip_latency.as_micros() as f64) / 1000.0, &udp_association.local_udp_addr
+                    &udp_association.public_udp_addr,
+                    &packet.body.name,
+                    (round_trip_latency.as_micros() as f64) / 1000.0,
+                    &udp_association.local_udp_addr
                 );
                 let other_clients = clients.established.keys().copied().collect();
                 clients.established.insert(

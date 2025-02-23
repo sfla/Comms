@@ -3,11 +3,11 @@ mod state;
 
 use crate::measurement::create_measurement_pipeline;
 use crate::state::MeasureState;
-use audio_device::audio_connection::{create_minimal_event_loop, EventLoop};
+use audio_device::audio_connection::{EventLoop, create_minimal_event_loop};
 use audio_thread_priority::promote_current_thread_to_real_time;
 use std::io;
-use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};

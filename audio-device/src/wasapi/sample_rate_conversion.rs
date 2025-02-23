@@ -1,8 +1,8 @@
 use crate::buffer::{MicSink, PlaybackSource};
-use dasp::interpolate::linear::Linear;
-use dasp::interpolate::Interpolator;
-use dasp::sample::FromSample;
 use dasp::Sample;
+use dasp::interpolate::Interpolator;
+use dasp::interpolate::linear::Linear;
+use dasp::sample::FromSample;
 
 pub trait MicSampleRateConverter<M: MicSink> {
     fn feed_next(&mut self, sample: f64, mic_sink: &mut M);

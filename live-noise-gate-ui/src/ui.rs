@@ -5,9 +5,9 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
 
 use crate::audio::{NOISE_GATE_CHUNK_LEN, SAMPLES_IN_CHUNK};
+use eframe::Frame;
 use eframe::egui;
 use eframe::egui::Context;
-use eframe::Frame;
 use egui::*;
 use egui_plot::{HLine, Line, Plot};
 use egui_plot::{Legend, PlotPoints, Polygon};

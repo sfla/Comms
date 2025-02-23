@@ -5,8 +5,8 @@ use comms_lib::network::{Protocol, ServerUdpPacket, UdpConnection};
 use comms_lib::packet::{ClientId, PacketBody, PacketId};
 use comms_lib::serialization::OutgoingPacketFrame;
 use mio::Waker;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 
 pub struct OutgoingQueue {
     receiver: Receiver<(

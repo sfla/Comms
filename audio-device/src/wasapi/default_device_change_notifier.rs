@@ -1,11 +1,11 @@
 use crate::wasapi::com;
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Media::Audio;
 use windows::Win32::Media::Audio::{
     EDataFlow, ERole, IMMNotificationClient, IMMNotificationClient_Impl,
 };
 use windows::Win32::System::Threading;
+use windows::core::PCWSTR;
 
 #[windows::core::implement(IMMNotificationClient)]
 pub struct CommsImmNotificationClient(HANDLE);

@@ -13,10 +13,10 @@ use futures::channel::mpsc::Sender;
 use futures::channel::oneshot;
 use futures::future::Either;
 use futures::pin_mut;
-use futures::{future, SinkExt};
+use futures::{SinkExt, future};
 use futures_timer::Delay;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use comms_lib::network::CommsNetworkError;
 use comms_lib::packet;

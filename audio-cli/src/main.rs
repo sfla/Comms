@@ -7,7 +7,7 @@ use comms_lib::packet::{
 use comms_lib::serialization::{
     IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame, SerializeError,
 };
-use comms_lib::{PacketHeader, PACKET_HEADER_SIZE};
+use comms_lib::{PACKET_HEADER_SIZE, PacketHeader};
 use std::io::{Read, Write};
 use std::net::{TcpStream, UdpSocket};
 use std::num::NonZeroU64;

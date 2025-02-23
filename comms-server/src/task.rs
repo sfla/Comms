@@ -1,13 +1,13 @@
 use comms_lib::packet::PacketKind;
-use futures::task::{waker_ref, ArcWake, Context, Poll};
+use futures::task::{ArcWake, Context, Poll, waker_ref};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::{Rc, Weak};
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, sync_channel};
 
 type EndpointFuture = dyn Future<Output = FutureResult> + 'static;
 

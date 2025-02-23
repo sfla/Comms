@@ -1,7 +1,7 @@
 use crate::warp_wrapper_path::get_warp_wrapper_path;
-use windows::core::s;
-use windows::core::PCSTR;
 use windows::Win32::System::Registry;
+use windows::core::PCSTR;
+use windows::core::s;
 
 pub fn run() {
     let mut key = Registry::HKEY::default();

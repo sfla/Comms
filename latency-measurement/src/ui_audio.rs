@@ -1,6 +1,6 @@
 use crate::{AudioData, TIME_PLOT_SAMPLES_PER_SECOND};
-use audio_device::audio_connection::create_minimal_event_loop;
 use audio_device::audio_connection::EventLoop;
+use audio_device::audio_connection::create_minimal_event_loop;
 use audio_device::buffer::{MicSink, PlaybackSource, UnsharedPlaybackSource};
 use std::cell::RefCell;
 use std::collections::VecDeque;

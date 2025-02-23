@@ -1,6 +1,6 @@
 use crate::packet::ClientId;
 use crate::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, SerializeError};
-use crate::{PacketHeader, PACKET_HEADER_SIZE};
+use crate::{PACKET_HEADER_SIZE, PacketHeader};
 use mio::net::{TcpStream, UdpSocket};
 use std::collections::{HashMap, VecDeque};
 use std::io;
@@ -136,7 +136,7 @@ impl TcpConnection {
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(()),
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(e) if e.kind() == io::ErrorKind::ConnectionReset => {
-                    return Err(CommsNetworkError::Closed)
+                    return Err(CommsNetworkError::Closed);
                 }
                 Err(e) => return Err(CommsNetworkError::Io(e)),
             }
