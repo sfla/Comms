@@ -1,7 +1,7 @@
 use crate::packet::{AudioIndex, PacketId, PacketKind};
 use std::io::Read;
 
-use crate::serialization::SerializeError;
+use crate::serialization::{BINCODE_CONFIG, DeserializeError};
 pub use serde::{Deserialize, Serialize};
 use std::mem;
 
@@ -51,11 +51,11 @@ impl Read for MultipleByteSlices<'_, '_> {
 }
 
 impl PacketHeader {
-    pub fn from_multiple_byte_slices(bytes: &mut [&[u8]]) -> Result<Self, SerializeError> {
-        bincode::deserialize_from(MultipleByteSlices(bytes))
+    pub fn from_multiple_byte_slices(bytes: &mut [&[u8]]) -> Result<Self, DeserializeError> {
+        bincode::serde::decode_from_std_read(&mut MultipleByteSlices(bytes), BINCODE_CONFIG)
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SerializeError> {
-        bincode::deserialize(bytes)
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DeserializeError> {
+        bincode::serde::decode_from_slice(bytes, BINCODE_CONFIG).map(|r| r.0)
     }
 }

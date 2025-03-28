@@ -260,7 +260,7 @@ where
     Req: PacketBody,
 {
     let packet = OutgoingPacketFrame::from_packet(reply_to, &request)
-        .map_err(CommsNetworkError::Deserialize)?;
+        .map_err(CommsNetworkError::Serialize)?;
     Ok(NetworkFuture::new(handle, |s| NetworkCommand::Packet {
         protocol,
         packet,
@@ -300,7 +300,7 @@ where
     Req: PacketBody + Serialize,
 {
     let packet = OutgoingPacketFrame::from_packet(reply_to, &request)
-        .map_err(CommsNetworkError::Deserialize)?;
+        .map_err(CommsNetworkError::Serialize)?;
     handle.command(NetworkCommand::Packet {
         protocol: packet_type,
         packet,

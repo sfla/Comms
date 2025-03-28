@@ -5,7 +5,7 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-bincode = "1.2"
+bincode = { version = "2.0", features = ["serde"] }
 mio = { version = "1.0", features = ["net", "os-poll"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"

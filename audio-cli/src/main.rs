@@ -5,7 +5,8 @@ use comms_lib::packet::{
     FinishConnectAccepted, Hello, Packet, PacketBody, PacketId,
 };
 use comms_lib::serialization::{
-    IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame, SerializeError,
+    DeserializeError, IncomingPacketFrame, IncomingPacketFrameRef, OutgoingPacketFrame,
+    SerializeError,
 };
 use comms_lib::{PACKET_HEADER_SIZE, PacketHeader};
 use std::io::{Read, Write};
@@ -17,7 +18,7 @@ use std::time::{Duration, SystemTime};
 use std::{env, io};
 use uuid::Uuid;
 
-fn read_next_udp(udp: &UdpSocket) -> Result<IncomingPacketFrame, SerializeError> {
+fn read_next_udp(udp: &UdpSocket) -> Result<IncomingPacketFrame, DeserializeError> {
     let mut buffer = [0u8; 65535];
     let size = udp.recv(&mut buffer).unwrap();
     IncomingPacketFrame::from_bytes(&buffer[..size])
@@ -351,6 +352,7 @@ enum AudioCliError {
     Usage,
     Io,
     Serialize,
+    Deserialize,
     Opus,
 }
 
@@ -363,6 +365,12 @@ impl From<io::Error> for AudioCliError {
 impl From<SerializeError> for AudioCliError {
     fn from(_: SerializeError) -> Self {
         AudioCliError::Serialize
+    }
+}
+
+impl From<DeserializeError> for AudioCliError {
+    fn from(_: DeserializeError) -> Self {
+        AudioCliError::Deserialize
     }
 }
 

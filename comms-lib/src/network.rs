@@ -1,5 +1,5 @@
 use crate::packet::ClientId;
-use crate::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, SerializeError};
+use crate::serialization::{DeserializeError, IncomingPacketFrame, IncomingPacketFrameRef};
 use crate::{PACKET_HEADER_SIZE, PacketHeader};
 use mio::net::{TcpStream, UdpSocket};
 use std::collections::{HashMap, VecDeque};
@@ -166,7 +166,7 @@ pub trait UdpPacket {
     fn from_recv(socket: &mut UdpSocket) -> io::Result<Option<Self>>
     where
         Self: Sized;
-    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, SerializeError>, SocketAddr);
+    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, DeserializeError>, SocketAddr);
 }
 
 pub struct ServerUdpPacket {
@@ -203,7 +203,7 @@ impl UdpPacket for ServerUdpPacket {
         }))
     }
 
-    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, SerializeError>, SocketAddr) {
+    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, DeserializeError>, SocketAddr) {
         let incoming_packet_result = IncomingPacketFrame::from_bytes(&self.buffer);
         (incoming_packet_result, self.client_addr)
     }
@@ -244,7 +244,7 @@ impl UdpPacket for ClientUdpPacket {
         }))
     }
 
-    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, SerializeError>, SocketAddr) {
+    fn into_incoming_packet(self) -> (Result<Self::IncomingPacket, DeserializeError>, SocketAddr) {
         (
             IncomingPacketFrame::from_bytes(&self.buffer),
             self.client_addr,
@@ -348,7 +348,7 @@ impl<'a> TcpReadIter<'a> {
         Ok(())
     }
 
-    fn next_frame(&mut self) -> Option<Result<IncomingPacketFrameRef, SerializeError>> {
+    fn next_frame(&mut self) -> Option<Result<IncomingPacketFrameRef, DeserializeError>> {
         let header = if let Some(header) = self.next_incoming_header.take() {
             header
         } else {
@@ -463,7 +463,7 @@ impl<'a> UdpReadIter<'a, ClientUdpPacket> for ClientUdpReadIter<'a> {
 
 impl Iterator for ClientUdpReadIter<'_> {
     type Item = (
-        Result<<ClientUdpPacket as UdpPacket>::IncomingPacket, SerializeError>,
+        Result<<ClientUdpPacket as UdpPacket>::IncomingPacket, DeserializeError>,
         SocketAddr,
     );
 
@@ -513,7 +513,7 @@ impl<'a> UdpReadIter<'a, ServerUdpPacket> for ServerUdpReadIter<'a> {
 
 impl Iterator for ServerUdpReadIter<'_> {
     type Item = (
-        Result<<ServerUdpPacket as UdpPacket>::IncomingPacket, SerializeError>,
+        Result<<ServerUdpPacket as UdpPacket>::IncomingPacket, DeserializeError>,
         SocketAddr,
     );
 
@@ -533,5 +533,6 @@ pub enum UpdateFromStream {
 pub enum CommsNetworkError {
     Closed,
     Io(io::Error),
-    Deserialize(bincode::Error),
+    Deserialize(bincode::error::DecodeError),
+    Serialize(bincode::error::EncodeError),
 }

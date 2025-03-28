@@ -4,7 +4,7 @@ use std::num::NonZeroU64;
 use std::time::Duration;
 use uuid::Uuid;
 
-pub const PROTOCOL_VERSION: ProtocolVersion = 3;
+pub const PROTOCOL_VERSION: ProtocolVersion = 4;
 
 pub type ProtocolVersion = u32;
 pub type UserId = Uuid;

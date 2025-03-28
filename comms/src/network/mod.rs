@@ -169,7 +169,7 @@ fn handle_udp_packet(
                 Some(parsed_packet.header.id),
                 &P2pAcknowledge(),
             )
-            .map_err(CommsNetworkError::Deserialize)?,
+            .map_err(CommsNetworkError::Serialize)?,
             send_response: None,
         }),
         P2pAcknowledgeBack::KIND_ID => {
@@ -533,7 +533,7 @@ impl Worker {
                                         }
                                     }
                                     Err(e) => {
-                                        send_response.done(Err(CommsNetworkError::Deserialize(e)));
+                                        send_response.done(Err(CommsNetworkError::Serialize(e)));
                                     }
                                 }
                             }

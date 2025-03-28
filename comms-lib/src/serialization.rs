@@ -5,6 +5,8 @@ use std::fmt::{Debug, Formatter};
 use std::io::Cursor;
 use std::{fmt, mem};
 
+pub const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
+
 #[derive(Clone)]
 pub struct OutgoingPacketFrame {
     pub kind: PacketKind,
@@ -18,7 +20,7 @@ impl OutgoingPacketFrame {
         B: PacketBody,
     {
         let mut bytes_with_empty_header = vec![0u8; mem::size_of::<PacketHeader>()];
-        bincode::serialize_into(&mut bytes_with_empty_header, &body)?;
+        bincode::serde::encode_into_std_write(body, &mut bytes_with_empty_header, BINCODE_CONFIG)?;
         Ok(Self {
             kind: B::KIND_ID,
             reply_to,
@@ -31,20 +33,22 @@ impl OutgoingPacketFrame {
         let mut bytes = self.bytes_with_empty_header;
         let mut cursor = Cursor::new(&mut bytes);
         cursor.set_position(0);
-        bincode::serialize_into(
-            cursor,
+        bincode::serde::encode_into_std_write(
             &PacketHeader {
                 id,
                 reply_to: self.reply_to,
                 kind: self.kind,
                 body_len: body_len as u16,
             },
+            &mut cursor,
+            BINCODE_CONFIG,
         )?;
         Ok(bytes)
     }
 }
 
-pub type SerializeError = bincode::Error;
+pub type SerializeError = bincode::error::EncodeError;
+pub type DeserializeError = bincode::error::DecodeError;
 
 pub struct IncomingPacketFrameRef<'a> {
     pub header: PacketHeader,
@@ -78,23 +82,23 @@ impl<'a> IncomingPacketFrameRef<'a> {
         self.header.kind
     }
 
-    pub fn finish_parse<B>(self) -> Result<Packet<B>, SerializeError>
+    pub fn finish_parse<B>(self) -> Result<Packet<B>, DeserializeError>
     where
         B: PacketBody + DeserializeOwned,
     {
-        let body = if self.tcp_stream_max_size - *self.incoming_stream_start
+        let (body, _) = if self.tcp_stream_max_size - *self.incoming_stream_start
             > self.header.body_len as usize
         {
             let buffer = &self.incoming_stream[*self.incoming_stream_start
                 ..*self.incoming_stream_start + self.header.body_len as usize];
-            bincode::deserialize(buffer)?
+            bincode::serde::decode_from_slice(buffer, BINCODE_CONFIG)?
         } else {
             let slices = &mut [
                 &self.incoming_stream[*self.incoming_stream_start..],
                 &self.incoming_stream[..self.header.body_len as usize
                     - (self.tcp_stream_max_size - *self.incoming_stream_start)],
             ];
-            bincode::deserialize_from(MultipleByteSlices(slices))?
+            bincode::serde::decode_from_std_read(&mut MultipleByteSlices(slices), BINCODE_CONFIG)?
         };
 
         *self.incoming_stream_start = (*self.incoming_stream_start + self.header.body_len as usize)
@@ -149,7 +153,7 @@ impl IncomingPacketFrame {
         Self { header, body_bytes }
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SerializeError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DeserializeError> {
         let raw_header_size = mem::size_of::<PacketHeader>();
         let header = PacketHeader::from_bytes(&bytes[..raw_header_size])?;
         Ok(Self {
@@ -162,11 +166,11 @@ impl IncomingPacketFrame {
         self.header.kind
     }
 
-    pub fn finish_parse<B>(self) -> Result<Packet<B>, SerializeError>
+    pub fn finish_parse<B>(self) -> Result<Packet<B>, DeserializeError>
     where
         B: PacketBody + DeserializeOwned,
     {
-        let body = bincode::deserialize(&self.body_bytes)?;
+        let (body, _) = bincode::serde::decode_from_slice(&self.body_bytes, BINCODE_CONFIG)?;
         Ok(Packet::new(self.header.id, self.header.reply_to, body))
     }
 }

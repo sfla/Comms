@@ -13,7 +13,9 @@ use comms_lib::packet::{
     P2pEstablished, Packet, PacketBody, PacketId, ProtocolVersion, RawAudio, RecordRawOneMinute,
     UserJoined, UserLeft,
 };
-use comms_lib::serialization::{IncomingPacketFrame, IncomingPacketFrameRef, SerializeError};
+use comms_lib::serialization::{
+    DeserializeError, IncomingPacketFrame, IncomingPacketFrameRef, SerializeError,
+};
 use futures::future;
 use std::cell::RefCell;
 use std::io;
@@ -375,7 +377,7 @@ fn udp_packet_to_endpoint(
     spawner: &Spawner,
     packet: IncomingPacketFrame,
     context: Context,
-) -> Result<(), SerializeError> {
+) -> Result<(), DeserializeError> {
     match packet.kind() {
         AudioFromClient::KIND_ID => {
             spawner.spawn(audio_from_client(context, packet.finish_parse()?))
@@ -440,7 +442,7 @@ pub fn handle_udp_packet(
     clients: Rc<RefCell<Clients>>,
     spawner: &Spawner,
     network_handle: NetworkHandle,
-) -> Result<(), SerializeError> {
+) -> Result<(), DeserializeError> {
     let kind = packet.header.kind;
     if kind == AssociateUdp::KIND_ID {
         // This is the only packet that doesn't need to be sent from a client
