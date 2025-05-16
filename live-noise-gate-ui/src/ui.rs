@@ -35,8 +35,8 @@ pub enum Command {
     PlayLoopback,
 }
 
-fn samples_to_line(samples: &VecDeque<(Instant, f32)>) -> Line {
-    Line::new(PlotPoints::from_parametric_callback(
+fn samples_to_line_plotpoints<'a>(samples: &VecDeque<(Instant, f32)>) -> PlotPoints<'a> {
+    PlotPoints::from_parametric_callback(
         move |t| {
             let (instant, sample) = samples.get(t as usize).copied().unwrap();
             (
@@ -49,7 +49,7 @@ fn samples_to_line(samples: &VecDeque<(Instant, f32)>) -> Line {
         },
         0f64..samples.len() as f64,
         samples.len(),
-    ))
+    )
 }
 
 pub struct AudioPlot {
@@ -145,11 +145,13 @@ impl AudioPlot {
     fn buckets(&self) -> Line {
         let buckets = &self.buckets;
 
-        if buckets.is_empty() {
-            return Line::new(PlotPoints::default());
-        }
+        let plotpoints = if buckets.is_empty() {
+            PlotPoints::default()
+        } else {
+            samples_to_line_plotpoints(buckets)
+        };
 
-        samples_to_line(buckets)
+        Line::new("Sample groups", plotpoints)
             .color(Color32::from_rgb(100, 220, 100))
             .name(format!("Samples (groups of {SAMPLES_IN_BUCKET})"))
     }
@@ -157,11 +159,13 @@ impl AudioPlot {
     fn rmses(&self) -> Line {
         let chunks = &self.chunk_rmses;
 
-        if chunks.is_empty() {
-            return Line::new(PlotPoints::default());
-        }
+        let plotpoints = if chunks.is_empty() {
+            PlotPoints::default()
+        } else {
+            samples_to_line_plotpoints(chunks)
+        };
 
-        samples_to_line(chunks)
+        Line::new("Chunk RMSes", plotpoints)
             .color(Color32::from_rgb(220, 100, 100))
             .name("Chunk RMSes")
     }
@@ -169,11 +173,13 @@ impl AudioPlot {
     fn maxes(&self) -> Line {
         let chunks = &self.chunk_maxes;
 
-        if chunks.is_empty() {
-            return Line::new(PlotPoints::default());
-        }
+        let plotpoints = if chunks.is_empty() {
+            PlotPoints::default()
+        } else {
+            samples_to_line_plotpoints(chunks)
+        };
 
-        samples_to_line(chunks)
+        Line::new("Chunk maxes", plotpoints)
             .color(Color32::from_rgb(100, 100, 220))
             .name("Chunk maxes")
     }
@@ -188,7 +194,7 @@ impl AudioPlot {
             _ => Color32::from_rgb(50, 50, 50),
         };
 
-        HLine::new(self.threshold)
+        HLine::new("Threshold", self.threshold)
             .color(threshold_color)
             .name("Threshold")
     }
@@ -205,17 +211,20 @@ impl AudioPlot {
             if start_x == end_x {
                 // Beginning and end are equivalent (such as when recording happened before
                 // beginning of current window) - don't show a polygon at all.
-                Polygon::new(PlotPoints::default())
+                Polygon::new("Recording", PlotPoints::default())
             } else {
-                Polygon::new(PlotPoints::from_iter([
-                    [start_x, 0f64],
-                    [start_x, 1f64],
-                    [end_x, 1f64],
-                    [end_x, 0f64],
-                ]))
+                Polygon::new(
+                    "Recording",
+                    PlotPoints::from_iter([
+                        [start_x, 0f64],
+                        [start_x, 1f64],
+                        [end_x, 1f64],
+                        [end_x, 0f64],
+                    ]),
+                )
             }
         } else {
-            Polygon::new(PlotPoints::default())
+            Polygon::new("Recording", PlotPoints::default())
         }
         .fill_color(Color32::from_rgba_unmultiplied(180, 120, 120, 128))
         .name("Recording")

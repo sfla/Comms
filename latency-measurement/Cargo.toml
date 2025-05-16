@@ -17,4 +17,4 @@ path = "src/ui.rs"
 audio-device = { path = "../audio-device" }
 audio_thread_priority = "0.33"
 eframe = "0.31"
-egui_plot = "0.31"
+egui_plot = "0.32"

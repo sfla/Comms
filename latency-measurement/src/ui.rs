@@ -104,23 +104,32 @@ impl Widget for &mut TimePlot {
             .legend(Legend::default())
             .show(ui, |plot| {
                 plot.line(
-                    Line::new(PlotPoints::Owned(incoming_samples_plot_points.clone()))
-                        .name("Incoming Audio")
-                        .color(Color32::from_rgba_unmultiplied(0, 255, 0, 32)),
+                    Line::new(
+                        "Incoming Audio",
+                        PlotPoints::Owned(incoming_samples_plot_points.clone()),
+                    )
+                    .name("Incoming Audio")
+                    .color(Color32::from_rgba_unmultiplied(0, 255, 0, 32)),
                 );
                 plot.line(
-                    Line::new(PlotPoints::Owned(outgoing_samples_plot_points.clone()))
-                        .name("Outgoing Audio")
-                        .color(Color32::from_rgba_unmultiplied(255, 0, 0, 32)),
+                    Line::new(
+                        "Ougoing Audio",
+                        PlotPoints::Owned(outgoing_samples_plot_points.clone()),
+                    )
+                    .name("Outgoing Audio")
+                    .color(Color32::from_rgba_unmultiplied(255, 0, 0, 32)),
                 );
                 if let Some((instant, noise_threshold)) = self.noise_threshold {
                     let millis = ((now - instant).as_millis() as f64).neg();
 
                     plot.line(
-                        Line::new(PlotPoints::from_iter([
-                            [millis, noise_threshold as f64],
-                            [0f64, noise_threshold as f64],
-                        ]))
+                        Line::new(
+                            "Noise threshold",
+                            PlotPoints::from_iter([
+                                [millis, noise_threshold as f64],
+                                [0f64, noise_threshold as f64],
+                            ]),
+                        )
                         .name("Noise threshold")
                         .color(Color32::from_rgba_unmultiplied(0, 0, 255, 255)),
                     );

@@ -37,7 +37,7 @@ struct FuturesArena {
 impl FuturesArena {
     fn new_future(&mut self, future: impl Future<Output = FutureResult> + 'static) -> ArenaToken {
         let future = Box::pin(future);
-        let token = match self.tokens.pop() {
+        match self.tokens.pop() {
             Some(token) => {
                 *self
                     .futures
@@ -51,8 +51,7 @@ impl FuturesArena {
                 self.futures.insert(token.0, Some(future));
                 token
             }
-        };
-        token
+        }
     }
 }
 
