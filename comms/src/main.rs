@@ -46,6 +46,7 @@ fn main() {
                     release: Some(comms_version()),
                     send_default_pii: true,
                     environment: Some(Cow::from("production")),
+                    auto_session_tracking: true,
                     ..Default::default()
                 },
             )),
