@@ -1,7 +1,5 @@
-# Expects the following environment variables to be set:
-# DUMPBIN_PATH: path to the VS Build Tools "dumpbin.exe" binary
-# EDITBIN_PATH: path to the VS Build Tools "editbin.exe" binary - only needed if -hide_console is specified
 param(
+    [string]$msvc_bin_path = $env:MSVC_BIN_PATH,
     [switch]$reuse_package_dir,
     [switch]$hide_console,
     [string]$cargo_profile = "release-windows",
@@ -11,9 +9,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$editbin = [Environment]::GetEnvironmentVariable('EDITBIN_PATH')
-if ($hide_console -and -not $editbin) {
-    echo "'-hide_console' was provided, but the required environment variable 'EDITBIN_PATH' is not set"
+if (-not $msvc_bin_path) {
+    echo 'Missing "$msvc_bin_path" parameter (the path to the VS Build Tools arch-specific binary directory that contains "dumpbin.exe"), for example: "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64"'
+    exit 1
+}
+
+$dumpbin = Join-Path "$msvc_bin_path" "dumpbin.exe"
+if (-not (Test-Path $dumpbin)) {
+    echo "Could not find 'dumpbin.exe' in provided '`$msvc_bin_path' parameter: '$msvc_bin_path'"
     exit 1
 }
 
@@ -42,7 +45,6 @@ if (-not (Test-Path -Path $package_dir) -or -not $reuse_package_dir) {
     Remove-Item $package_dir -Recurse -ErrorAction Ignore
     [void](mkdir $package_dir)
 
-    $dumpbin = [Environment]::GetEnvironmentVariable('DUMPBIN_PATH')
     $global:handled_dependencies = @()
     function CopyWithDependencies {
         param (
@@ -87,19 +89,23 @@ if (-not (Test-Path -Path $package_dir) -or -not $reuse_package_dir) {
     cp $comms_path $package_dir/comms-embedded.exe
 }
 
-Remove-Item comms.exe -ErrorAction Ignore
-Remove-Item comms-with-console.exe -ErrorAction Ignore
-warp-packer --arch windows-x64 --input_dir $package_dir --exec comms-embedded.exe --output comms.exe --coalesce_window_with_app_id mitchhentges.comms
+$comms_output_path = Join-Path "$repo_dir" 'comms.exe'
+$comms_with_console_output_path = Join-Path "$repo_dir" 'comms-with-console.exe'
+Remove-Item $comms_output_path -ErrorAction Ignore
+Remove-Item $comms_with_console_output_path -ErrorAction Ignore
+warp-packer --arch windows-x64 --input_dir $package_dir --exec comms-embedded.exe --output $comms_output_path --coalesce_window_with_app_id mitchhentges.comms
 
 if ($hide_console) {
-    mv comms.exe comms-with-console.exe
+    mv $comms_output_path $comms_with_console_output_path
+    $editbin = Join-Path "$msvc_bin_path" "editbin.exe"
     &$editbin /subsystem:windows $package_dir/comms-embedded.exe
-    warp-packer --arch windows-x64 --input_dir $package_dir --exec comms-embedded.exe --output comms.exe --coalesce_window_with_app_id mitchhentges.comms
-    &$editbin /subsystem:windows comms.exe
+    warp-packer --arch windows-x64 --input_dir $package_dir --exec comms-embedded.exe --output $comms_output_path --coalesce_window_with_app_id mitchhentges.comms
+    &$editbin /subsystem:windows $comms_output_path
 }
 
 if (Get-Command "ResourceHacker.exe" -ErrorAction SilentlyContinue) {
-    ResourceHacker.exe -open comms.exe -save comms.exe -action addskip -res comms\resources\logo.ico -mask "ICONGROUP,MAINICON,"
+    $logo_path = Join-Path "$repo_dir" 'comms\resources\logo.ico'
+    ResourceHacker.exe -open $comms_output_path -save $comms_output_path -action addskip -res "$logo_path" -mask "ICONGROUP,MAINICON,"
 
     if (Test-Path -Path comms-with-console.exe) {
         ResourceHacker.exe -open comms-with-console.exe -save comms-with-console.exe -action addskip -res comms\resources\logo.ico -mask "ICONGROUP,MAINICON,"
