@@ -197,7 +197,7 @@ impl<
                                 s.raw_stream.start();
                                 self.connection.mic_stream = Some(s);
                             }
-                            Err(e) => eprintln!("Could not convert new mic into stream: {:?}", e),
+                            Err(e) => eprintln!("Could not convert new mic into stream: {e:?}"),
                         }
                     }
 
@@ -225,8 +225,7 @@ impl<
                                 self.connection.playback_stream = Some(s);
                             }
                             Err(e) => eprintln!(
-                                "Could not convert new playback device into stream: {:?}",
-                                e
+                                "Could not convert new playback device into stream: {e:?}",
                             ),
                         }
                     }

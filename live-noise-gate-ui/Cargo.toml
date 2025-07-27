@@ -7,6 +7,6 @@ edition.workspace = true
 [dependencies]
 audio-device = { path = "../audio-device" }
 dasp = "0.11.0"
-eframe = "0.31"
-egui_plot = "0.32"
+eframe = "0.32"
+egui_plot = "0.33"
 rfd = "0.15"

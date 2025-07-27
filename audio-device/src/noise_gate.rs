@@ -137,7 +137,7 @@ impl GateNoiseFilter {
             .max_by(|x, y| x.partial_cmp(y).unwrap())
             .unwrap();
 
-        self.recent_chunks.push(max);
+        self.recent_chunks.enqueue(max);
 
         let noise_floor = self
             .recent_chunks

@@ -273,7 +273,7 @@ fn connect(
 
     let (stream, error) = TcpConnection::new(tcp);
     if let Some(e) = error {
-        panic!("Expected to be able to set TCP timeout {:?}", e);
+        panic!("Expected to be able to set TCP timeout {e:?}");
     }
     Ok(Connection::new(
         udp,

@@ -134,4 +134,8 @@ fn main() {
         ui_receiver,
         audio_handle,
     );
+
+    println!("phwoar");
+    sentry::end_session();
+    println!("done")
 }

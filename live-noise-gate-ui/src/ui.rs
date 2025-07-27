@@ -275,8 +275,8 @@ impl eframe::App for App {
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
-            egui::menu::bar(ui, |ui| {
-                egui::menu::menu_button(ui, "File", |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
+                egui::containers::menu::MenuButton::new("File").ui(ui, |ui| {
                     if ui.button("Quit").clicked() {
                         ctx.send_viewport_cmd(ViewportCommand::Close)
                     }

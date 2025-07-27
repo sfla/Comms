@@ -1430,7 +1430,7 @@ pub fn run(
                     let native = window.native().unwrap();
                     let surface = native.surface().unwrap();
                     let surface: Win32Surface = surface.downcast().unwrap();
-                    let app_window: HWND = HWND(surface.handle().0 as *mut c_void);
+                    let app_window: HWND = HWND(surface.handle().0);
                     let _ = unsafe { ShowWindow(app_window, SW_SHOWMINNOACTIVE) };
 
                     unsafe {

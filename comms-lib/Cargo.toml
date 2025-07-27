@@ -12,4 +12,4 @@ serde_bytes = "0.11"
 uuid = { version = "1.1.1", features = ["v4", "fast-rng", "serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-socket2 = "0.5"
+socket2 = "0.6"
