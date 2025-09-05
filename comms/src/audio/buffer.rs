@@ -330,14 +330,14 @@ impl MicSink for MicBuffer {
                 }
             }
 
-            if let Some(until) = self.record_raw_until.as_mut() {
-                if &Instant::now() < until {
-                    self.network_handle
-                        .raw_audio(RawAudioFrame {
-                            samples: next_samples.to_vec(),
-                        })
-                        .unwrap();
-                }
+            if let Some(until) = self.record_raw_until.as_mut()
+                && &Instant::now() < until
+            {
+                self.network_handle
+                    .raw_audio(RawAudioFrame {
+                        samples: next_samples.to_vec(),
+                    })
+                    .unwrap();
             }
 
             for sample in next_samples.iter_mut() {

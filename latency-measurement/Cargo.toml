@@ -15,6 +15,6 @@ path = "src/ui.rs"
 
 [dependencies]
 audio-device = { path = "../audio-device" }
-audio_thread_priority = "0.33"
+audio_thread_priority = "0.34"
 eframe = "0.32"
 egui_plot = "0.33"

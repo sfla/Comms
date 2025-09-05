@@ -71,14 +71,14 @@ impl TcpConnection {
         Ok(())
     }
 
-    fn read_next(&mut self) -> io::Result<IncomingPacketFrameRef> {
+    fn read_next(&mut self) -> io::Result<IncomingPacketFrameRef<'_>> {
         self.update_from_socket(true)?;
         self.maybe_read_next()
             .transpose()
             .expect("Expecting packet to be available")
     }
 
-    fn maybe_read_next(&mut self) -> io::Result<Option<IncomingPacketFrameRef>> {
+    fn maybe_read_next(&mut self) -> io::Result<Option<IncomingPacketFrameRef<'_>>> {
         self.update_from_socket(false)?;
 
         let header = if let Some(header) = self.next_header.take() {

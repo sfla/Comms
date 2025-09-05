@@ -143,7 +143,7 @@ impl TcpConnection {
         }
     }
 
-    pub fn read_new_packets(&mut self) -> TcpReadIter {
+    pub fn read_new_packets(&mut self) -> TcpReadIter<'_> {
         let read_result = self.read_from_network();
         TcpReadIter {
             read_error: read_result.err(),
@@ -348,7 +348,7 @@ impl<'a> TcpReadIter<'a> {
         Ok(())
     }
 
-    fn next_frame(&mut self) -> Option<Result<IncomingPacketFrameRef, DeserializeError>> {
+    fn next_frame(&mut self) -> Option<Result<IncomingPacketFrameRef<'_>, DeserializeError>> {
         let header = if let Some(header) = self.next_incoming_header.take() {
             header
         } else {

@@ -218,11 +218,11 @@ fn handle_tcp_packet(
     )>,
     event_sender: &mut Sender<NetworkEvent>,
 ) -> Result<(), CommsNetworkError> {
-    if let Some(reply_to) = stream_packet.header.reply_to {
-        if let Some((Some(sender), None)) = reply_map.remove(&reply_to) {
-            sender.done(stream_packet.into());
-            return Ok(());
-        }
+    if let Some(reply_to) = stream_packet.header.reply_to
+        && let Some((Some(sender), None)) = reply_map.remove(&reply_to)
+    {
+        sender.done(stream_packet.into());
+        return Ok(());
     }
 
     let kind = stream_packet.header.kind;

@@ -142,7 +142,7 @@ impl AudioPlot {
         chunk_maxes.retain(|(instant, _)| instant.elapsed() < GRAPH_DURATION);
     }
 
-    fn buckets(&self) -> Line {
+    fn buckets(&self) -> Line<'_> {
         let buckets = &self.buckets;
 
         let plotpoints = if buckets.is_empty() {
@@ -156,7 +156,7 @@ impl AudioPlot {
             .name(format!("Samples (groups of {SAMPLES_IN_BUCKET})"))
     }
 
-    fn rmses(&self) -> Line {
+    fn rmses(&self) -> Line<'_> {
         let chunks = &self.chunk_rmses;
 
         let plotpoints = if chunks.is_empty() {
@@ -170,7 +170,7 @@ impl AudioPlot {
             .name("Chunk RMSes")
     }
 
-    fn maxes(&self) -> Line {
+    fn maxes(&self) -> Line<'_> {
         let chunks = &self.chunk_maxes;
 
         let plotpoints = if chunks.is_empty() {
@@ -199,7 +199,7 @@ impl AudioPlot {
             .name("Threshold")
     }
 
-    fn recording(&self) -> Polygon {
+    fn recording(&self) -> Polygon<'_> {
         if let Some(start) = self.recording_start {
             let start_x = -((start.elapsed().as_millis().min(GRAPH_DURATION.as_millis())) as f64);
             let end_x = if let Some(end) = self.recording_end {
@@ -290,8 +290,9 @@ impl eframe::App for App {
                     *is_muted = !*is_muted;
                     command_tx.send(Command::ToggleMute).unwrap();
                 }
-                if recording_path.is_none() && ui.button("Play recording file").clicked() {
-                    if let Some(path) = rfd::FileDialog::new()
+                if recording_path.is_none()
+                    && ui.button("Play recording file").clicked()
+                    && let Some(path) = rfd::FileDialog::new()
                         .set_directory(
                             last_playback_recording
                                 .as_ref()
@@ -309,13 +310,12 @@ impl eframe::App for App {
                         .add_filter("Comms audio dump files", &["dmp"])
                         .add_filter("All Files", &["*"])
                         .pick_file()
-                    {
-                        command_tx
-                            .send(Command::PlayRecording(path.clone()))
-                            .unwrap();
-                        *playback_source_is_loopback = false;
-                        *last_playback_recording = Some(path);
-                    }
+                {
+                    command_tx
+                        .send(Command::PlayRecording(path.clone()))
+                        .unwrap();
+                    *playback_source_is_loopback = false;
+                    *last_playback_recording = Some(path);
                 }
                 if !*playback_source_is_loopback {
                     if ui.button("Play recording again").clicked() {
@@ -330,19 +330,18 @@ impl eframe::App for App {
                         *playback_source_is_loopback = true;
                     }
                 } else if recording_path.is_none() {
-                    if ui.button("Record to file").clicked() {
-                        if let Some(path) = rfd::FileDialog::new()
+                    if ui.button("Record to file").clicked()
+                        && let Some(path) = rfd::FileDialog::new()
                             .set_directory(env::current_exe().unwrap().parent().unwrap())
                             .set_file_name("comms-audio-dump.dmp")
                             .add_filter("Comms audio dump files", &["dmp"])
                             .add_filter("All Files", &["*"])
                             .save_file()
-                        {
-                            command_tx.send(Command::StartRecording).unwrap();
-                            time.recording_start = Some(Instant::now());
-                            time.recording_end = None;
-                            *recording_path = Some(path);
-                        }
+                    {
+                        command_tx.send(Command::StartRecording).unwrap();
+                        time.recording_start = Some(Instant::now());
+                        time.recording_end = None;
+                        *recording_path = Some(path);
                     }
                 } else if ui.button("Stop recording").clicked() {
                     command_tx

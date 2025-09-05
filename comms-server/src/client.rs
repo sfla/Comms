@@ -111,7 +111,7 @@ impl Clients {
         established_connection.or(connecting)
     }
 
-    pub fn client_by_id(&mut self, client_id: &ClientId) -> Option<AnyClientRef> {
+    pub fn client_by_id(&mut self, client_id: &ClientId) -> Option<AnyClientRef<'_>> {
         match self.established.get_mut(client_id) {
             Some(c) => Some(AnyClientRef::Established(c)),
             None => self

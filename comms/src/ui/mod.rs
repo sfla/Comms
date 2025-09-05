@@ -812,14 +812,14 @@ async fn handle_network_events(
                 client_id,
                 is_from_lead_client,
             } => {
-                if let UiState::Main { users, .. } = ui.borrow_mut().state_mut() {
-                    if let Some(user) = users.get_mut(&client_id) {
-                        let mut user = user.borrow_mut();
-                        if !user.is_peer_to_peer || is_from_lead_client {
-                            user.is_peer_to_peer = true;
-                            user.network_latency = round_trip_latency;
-                            user.update_latency_text();
-                        }
+                if let UiState::Main { users, .. } = ui.borrow_mut().state_mut()
+                    && let Some(user) = users.get_mut(&client_id)
+                {
+                    let mut user = user.borrow_mut();
+                    if !user.is_peer_to_peer || is_from_lead_client {
+                        user.is_peer_to_peer = true;
+                        user.network_latency = round_trip_latency;
+                        user.update_latency_text();
                     }
                 }
             }
@@ -1014,40 +1014,40 @@ async fn handle_ui_commands(
                 client_id,
                 duration,
             } => {
-                if let UiState::Main { users, .. } = ui.borrow().state() {
-                    if let Some(user_rc) = users.get(&client_id) {
-                        let mut user = user_rc.borrow_mut();
-                        if !user.is_speaking {
-                            user.is_speaking = true;
-                            user.speaking_duration = duration;
-                            if let Some(p) = user.root_widget.parent() {
-                                p.add_css_class("active")
-                            }
-                            let glib_context = glib::MainContext::default();
-                            let user_rc = user_rc.clone();
-                            glib_context.spawn_local(async move {
-                                loop {
-                                    let timeout = {
-                                        let mut user = user_rc.borrow_mut();
-                                        let timeout = user.speaking_duration;
-                                        user.speaking_duration = Duration::ZERO;
-                                        timeout
-                                    };
-                                    Delay::new(timeout).await;
-
-                                    if timeout == Duration::ZERO {
-                                        let mut user = user_rc.borrow_mut();
-                                        user.is_speaking = false;
-                                        if let Some(p) = user.root_widget.parent() {
-                                            p.remove_css_class("active")
-                                        }
-                                        break;
-                                    }
-                                }
-                            });
-                        } else {
-                            user.speaking_duration += duration;
+                if let UiState::Main { users, .. } = ui.borrow().state()
+                    && let Some(user_rc) = users.get(&client_id)
+                {
+                    let mut user = user_rc.borrow_mut();
+                    if !user.is_speaking {
+                        user.is_speaking = true;
+                        user.speaking_duration = duration;
+                        if let Some(p) = user.root_widget.parent() {
+                            p.add_css_class("active")
                         }
+                        let glib_context = glib::MainContext::default();
+                        let user_rc = user_rc.clone();
+                        glib_context.spawn_local(async move {
+                            loop {
+                                let timeout = {
+                                    let mut user = user_rc.borrow_mut();
+                                    let timeout = user.speaking_duration;
+                                    user.speaking_duration = Duration::ZERO;
+                                    timeout
+                                };
+                                Delay::new(timeout).await;
+
+                                if timeout == Duration::ZERO {
+                                    let mut user = user_rc.borrow_mut();
+                                    user.is_speaking = false;
+                                    if let Some(p) = user.root_widget.parent() {
+                                        p.remove_css_class("active")
+                                    }
+                                    break;
+                                }
+                            }
+                        });
+                    } else {
+                        user.speaking_duration += duration;
                     }
                 }
             }
@@ -1055,13 +1055,12 @@ async fn handle_ui_commands(
                 if let UiState::Main {
                     client_id, users, ..
                 } = ui.borrow().state()
+                    && let Some(user_rc) = users.get(client_id)
                 {
-                    if let Some(user_rc) = users.get(client_id) {
-                        let mut user = user_rc.borrow_mut();
-                        user.is_speaking = true;
-                        if let Some(p) = user.root_widget.parent() {
-                            p.add_css_class("active")
-                        }
+                    let mut user = user_rc.borrow_mut();
+                    user.is_speaking = true;
+                    if let Some(p) = user.root_widget.parent() {
+                        p.add_css_class("active")
                     }
                 }
             }
@@ -1069,13 +1068,12 @@ async fn handle_ui_commands(
                 if let UiState::Main {
                     client_id, users, ..
                 } = ui.borrow().state()
+                    && let Some(user_rc) = users.get(client_id)
                 {
-                    if let Some(user_rc) = users.get(client_id) {
-                        let mut user = user_rc.borrow_mut();
-                        user.is_speaking = false;
-                        if let Some(p) = user.root_widget.parent() {
-                            p.remove_css_class("active")
-                        }
+                    let mut user = user_rc.borrow_mut();
+                    user.is_speaking = false;
+                    if let Some(p) = user.root_widget.parent() {
+                        p.remove_css_class("active")
                     }
                 }
             }

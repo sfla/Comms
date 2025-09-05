@@ -72,14 +72,14 @@ impl AudioConnection for PulseAudioConnection {
             // get all input devices
             introspector.get_source_info_list(move |source_result| match source_result {
                 ListResult::Item(source) => {
-                    if let Some(name) = &source.name {
-                        if let Some(description) = &source.description {
-                            let mut input_devices = input_devices.borrow_mut();
-                            input_devices.devices.push(DeviceInfo {
-                                id: name.clone().into_owned(),
-                                label: description.clone().into_owned(),
-                            })
-                        }
+                    if let Some(name) = &source.name
+                        && let Some(description) = &source.description
+                    {
+                        let mut input_devices = input_devices.borrow_mut();
+                        input_devices.devices.push(DeviceInfo {
+                            id: name.clone().into_owned(),
+                            label: description.clone().into_owned(),
+                        })
                     }
                 }
                 ListResult::End => {
@@ -103,14 +103,14 @@ impl AudioConnection for PulseAudioConnection {
 
         introspector.get_sink_info_list(move |sink_result| match sink_result {
             ListResult::Item(sink) => {
-                if let Some(name) = &sink.name {
-                    if let Some(description) = &sink.description {
-                        let mut output_devices = output_devices.borrow_mut();
-                        output_devices.devices.push(DeviceInfo {
-                            id: name.clone().into_owned(),
-                            label: description.clone().into_owned(),
-                        })
-                    }
+                if let Some(name) = &sink.name
+                    && let Some(description) = &sink.description
+                {
+                    let mut output_devices = output_devices.borrow_mut();
+                    output_devices.devices.push(DeviceInfo {
+                        id: name.clone().into_owned(),
+                        label: description.clone().into_owned(),
+                    })
                 }
             }
             ListResult::End => {

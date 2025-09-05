@@ -463,13 +463,12 @@ pub fn handle_udp_packet(
         }
     };
 
-    if let Some(reply_to) = packet.header.reply_to {
-        if let Some(connection) = clients.borrow_mut().connection_by_id(&client_id) {
-            if let Some(send_response) = connection.reply_map.remove(&reply_to) {
-                send_response.done(packet);
-                return Ok(());
-            }
-        }
+    if let Some(reply_to) = packet.header.reply_to
+        && let Some(connection) = clients.borrow_mut().connection_by_id(&client_id)
+        && let Some(send_response) = connection.reply_map.remove(&reply_to)
+    {
+        send_response.done(packet);
+        return Ok(());
     }
 
     udp_packet_to_endpoint(
@@ -511,11 +510,11 @@ pub fn handle_tcp_stream(
             network_handle: network_handle.clone(),
         };
 
-        if let Some(reply_to) = packet.header.reply_to {
-            if let Some(send_response) = reply_map.remove(&reply_to) {
-                send_response.done(IncomingPacketFrame::from(packet));
-                return Ok(());
-            }
+        if let Some(reply_to) = packet.header.reply_to
+            && let Some(send_response) = reply_map.remove(&reply_to)
+        {
+            send_response.done(IncomingPacketFrame::from(packet));
+            return Ok(());
         }
 
         tcp_packet_to_endpoint(spawner.clone(), context, packet)
