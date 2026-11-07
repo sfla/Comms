@@ -20,6 +20,7 @@ mod audio;
 mod network;
 #[cfg(windows)]
 mod register_protocol;
+mod shortcuts;
 mod ui;
 #[cfg(windows)]
 mod warp_wrapper_path;

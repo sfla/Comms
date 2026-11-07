@@ -260,6 +260,7 @@ pub struct MicBuffer {
     mic_command_rx: Receiver<MicCommand>,
     record_raw_until: Option<Instant>,
     is_speaking: bool,
+    mute_generation: u64,
 }
 
 impl MicBuffer {
@@ -268,6 +269,7 @@ impl MicBuffer {
         ui_handle: async_channel::Sender<UICommand>,
         mic_command_rx: Receiver<MicCommand>,
     ) -> Result<Self, audiopus::Error> {
+        let mute_generation = network_handle.mic_mute.generation();
         Ok(Self {
             network_handle,
             ui_handle,
@@ -284,12 +286,30 @@ impl MicBuffer {
             record_raw_until: None,
             mic_command_rx,
             is_speaking: false,
+            mute_generation,
         })
     }
 }
 
 impl MicSink for MicBuffer {
     fn append_sample_from_mic(&mut self, sample: f32) {
+        let generation = self.network_handle.mic_mute.generation();
+        if generation != self.mute_generation {
+            self.mute_generation = generation;
+            self.sample_buffer_start = 0;
+            self.sample_buffer_end = 0;
+            self.sample_buffer.fill(0.0);
+            self.noise_gate = GateNoiseFilter::new(2048);
+            if self.is_speaking {
+                self.is_speaking = false;
+                self.ui_handle
+                    .try_send(UICommand::CurrentUserStoppedSpeaking)
+                    .unwrap();
+            }
+        }
+        if generation % 2 == 1 {
+            return;
+        }
         self.sample_buffer[self.sample_buffer_end] = sample;
         self.sample_buffer_end = (self.sample_buffer_end + 1) % BUFFER_SIZE;
     }
@@ -334,9 +354,12 @@ impl MicSink for MicBuffer {
                 && &Instant::now() < until
             {
                 self.network_handle
-                    .raw_audio(RawAudioFrame {
-                        samples: next_samples.to_vec(),
-                    })
+                    .raw_audio(
+                        RawAudioFrame {
+                            samples: next_samples.to_vec(),
+                        },
+                        self.mute_generation,
+                    )
                     .unwrap();
             }
 
@@ -353,10 +376,13 @@ impl MicSink for MicBuffer {
 
                 let index = AudioIndex::new(self.index).unwrap();
                 self.network_handle
-                    .audio(OpusAudioFrame {
-                        index,
-                        bytes: encode_buffer[..size].to_vec(),
-                    })
+                    .audio(
+                        OpusAudioFrame {
+                            index,
+                            bytes: encode_buffer[..size].to_vec(),
+                        },
+                        self.mute_generation,
+                    )
                     .unwrap();
                 self.index += 1;
             }

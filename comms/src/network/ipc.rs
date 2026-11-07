@@ -74,8 +74,8 @@ pub enum NetworkCommand {
         packet: OutgoingPacketFrame,
         send_response: Option<SendResponse<IncomingPacketFrame>>,
     },
-    SendAudio(OpusAudioFrame),
-    SendRawAudio(RawAudioFrame),
+    SendAudio(OpusAudioFrame, u64),
+    SendRawAudio(RawAudioFrame, u64),
     RequestRecordRawOneMinute,
     Connect {
         destination: SocketAddr,
@@ -114,6 +114,7 @@ impl Display for NetworkCommand {
 
 #[derive(Clone)]
 pub struct NetworkHandle {
+    pub mic_mute: crate::shortcuts::MicMute,
     sender: Sender<NetworkCommand>,
     waker: Arc<Waker>,
 }
@@ -137,6 +138,7 @@ impl NetworkHandle {
         let waker = Waker::new(poll.registry(), command_token).unwrap();
 
         let network_handle = Self {
+            mic_mute: crate::shortcuts::MicMute::default(),
             sender: command_sender,
             waker: Arc::new(waker),
         };
@@ -162,13 +164,21 @@ impl NetworkHandle {
         self.waker.wake().unwrap();
     }
 
-    pub fn audio(&self, frame: OpusAudioFrame) -> Result<(), CommsNetworkError> {
-        self.command(NetworkCommand::SendAudio(frame));
+    pub fn audio(&self, frame: OpusAudioFrame, generation: u64) -> Result<(), CommsNetworkError> {
+        if self.mic_mute.permits(generation) {
+            self.command(NetworkCommand::SendAudio(frame, generation));
+        }
         Ok(())
     }
 
-    pub fn raw_audio(&self, frame: RawAudioFrame) -> Result<(), CommsNetworkError> {
-        self.command(NetworkCommand::SendRawAudio(frame));
+    pub fn raw_audio(
+        &self,
+        frame: RawAudioFrame,
+        generation: u64,
+    ) -> Result<(), CommsNetworkError> {
+        if self.mic_mute.permits(generation) {
+            self.command(NetworkCommand::SendRawAudio(frame, generation));
+        }
         Ok(())
     }
 }

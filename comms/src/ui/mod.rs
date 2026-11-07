@@ -40,6 +40,7 @@ use crate::{RESOURCES_DIR, network};
 use crate::ui::update::check_for_updates;
 
 pub mod ipc;
+mod shortcuts;
 #[cfg(windows)]
 mod update;
 
@@ -99,6 +100,10 @@ fn finish_connect(
     };
 
     let (row_widget, latency_widget) = UiUser::create_widgets(&username, round_trip_latency);
+    {
+        let ui = ui.borrow();
+        ui.shortcuts.add_user_controls(&row_widget, &ui.window);
+    }
     user_list.append(&row_widget);
 
     let user = Rc::new(RefCell::new(UiUser {
@@ -663,6 +668,7 @@ enum UiState {
 }
 
 struct UiModel {
+    shortcuts: Rc<shortcuts::ShortcutSettings>,
     state: Option<UiState>,
     pane_stack: gtk::Stack,
     builder: gtk::Builder,
@@ -1052,6 +1058,9 @@ async fn handle_ui_commands(
                 }
             }
             UICommand::CurrentUserStartedSpeaking => {
+                if ui.borrow().shortcuts.state.lock().unwrap().mute.is_muted() {
+                    continue;
+                }
                 if let UiState::Main {
                     client_id, users, ..
                 } = ui.borrow().state()
@@ -1222,6 +1231,7 @@ pub fn run(
             .unwrap();
         let builder = gtk::Builder::from_string(raw_app_ui);
         let ui = Rc::new(RefCell::new(UiModel {
+            shortcuts: shortcuts::ShortcutSettings::new(network.mic_mute.clone()),
             state: Some(UiState::ChooseServer {
                 user_id: initial_local_storage.user_id,
                 saved_volumes: initial_local_storage.volumes,

@@ -385,7 +385,10 @@ impl Worker {
                                     }
                                 }
                             }
-                            NetworkCommand::SendAudio(chunk) => {
+                            NetworkCommand::SendAudio(chunk, generation) => {
+                                if !network_handle.mic_mute.permits(generation) {
+                                    continue;
+                                }
                                 if let Some(connection) = &mut self.connection {
                                     let mut packets = vec![(
                                         connection.server_addr,
@@ -440,7 +443,10 @@ impl Worker {
                                     }
                                 }
                             }
-                            NetworkCommand::SendRawAudio(chunk) => {
+                            NetworkCommand::SendRawAudio(chunk, generation) => {
+                                if !network_handle.mic_mute.permits(generation) {
+                                    continue;
+                                }
                                 if let Some(connection) = &mut self.connection {
                                     let packet = OutgoingPacketFrame::from_packet(
                                         None,
